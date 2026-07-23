@@ -744,12 +744,12 @@
     <div id="custom-cursor-follower"></div>
 
     <!-- Floating Bot -->
-    <div class="bot-container" onclick="botSpeak()">
+    <div class="bot-container" onclick="openAiChatModal()">
         <div class="bot-icon">
             <i class="fa-solid fa-robot"></i>
         </div>
         <div class="bot-bubble" id="bot-msg">
-            Hi beautiful! Need some skincare motivation? ✨
+            Hi beautiful! Tap me for AI Skincare tips! ✨
         </div>
     </div>
 
@@ -895,17 +895,25 @@
                 </div>
             </section>
 
-            <!-- Settings View -->
-            <section id="settings" class="view-section">
                 <div class="settings-card glass">
                     <h3>Integrations & Settings</h3>
-                    <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 10px;">Your Google Client ID is securely built-in for seamless integration.</p>
+                    <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 10px;">Configure your Google Client ID and Gemini AI Key for intelligent skincare recommendations.</p>
                     <br>
                     <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; border: 1px solid var(--glass-border);">
                         <strong>Client ID:</strong> <div style="color: var(--secondary); word-break: break-all; margin-top: 4px; font-size: 0.9rem;">990352693904-5fd2efdcalkqjadffc020lhc4hh60eck.apps.googleusercontent.com</div>
                         <div style="margin-top: 10px;">
                             <span style="color: var(--success); font-size: 0.8rem;"><i class="fa-solid fa-check-circle"></i> Ready for sync</span>
                         </div>
+                    </div>
+
+                    <!-- Gemini AI Key Setting Card -->
+                    <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 12px; border: 1px solid var(--glass-border); margin-top: 15px;">
+                        <strong><i class="fa-solid fa-brain" style="color:var(--primary);"></i> Google Gemini AI Key:</strong>
+                        <div style="margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap;">
+                            <input type="password" id="gemini-key-input" placeholder="Paste your Gemini API Key here..." style="flex: 1; min-width: 200px; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: white; font-size: 0.85rem;">
+                            <button class="btn btn-sm" onclick="saveGeminiKey()"><i class="fa-solid fa-save"></i> Save Key</button>
+                        </div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 6px;">Get a free API key at <a href="https://aistudio.google.com/" target="_blank" style="color: var(--secondary); text-decoration: underline;">Google AI Studio</a>.</div>
                     </div>
                 </div>
             </section>
@@ -931,7 +939,44 @@
             <i class="fa-solid fa-gear"></i>
             <span>Settings</span>
         </div>
-    </nav>
+    <!-- Gemini AI Skincare Assistant Modal -->
+    <div id="ai-chat-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(8px); z-index: 10000; align-items: center; justify-content: center; padding: 15px;">
+        <div class="glass" style="width: 100%; max-width: 480px; max-height: 85vh; display: flex; flex-direction: column; overflow: hidden; border-radius: 20px;">
+            <!-- Modal Header -->
+            <div style="padding: 14px 18px; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.2);">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, var(--secondary), var(--primary)); display: flex; align-items: center; justify-content: center; font-size: 1.1rem; color: white;">
+                        <i class="fa-solid fa-robot"></i>
+                    </div>
+                    <div>
+                        <h3 style="font-size: 1.05rem; margin: 0;">Glow AI Assistant</h3>
+                        <span style="font-size: 0.7rem; color: var(--secondary);"><i class="fa-solid fa-sparkles"></i> Powered by Google Gemini</span>
+                    </div>
+                </div>
+                <button onclick="closeAiChatModal()" style="background: none; border: none; color: var(--text-muted); font-size: 1.2rem; cursor: pointer;"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            
+            <!-- Quick Prompt Chips -->
+            <div style="padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none;">
+                <button class="btn btn-sm btn-outline" style="font-size: 0.75rem; border-radius: 20px; white-space: nowrap;" onclick="askQuickAi('Give me 3 daily skincare tips for glowing skin!')">✨ Glowing Tips</button>
+                <button class="btn btn-sm btn-outline" style="font-size: 0.75rem; border-radius: 20px; white-space: nowrap;" onclick="askQuickAi('How do I reduce acne marks and hyperpigmentation?')">🌿 Acne Marks</button>
+                <button class="btn btn-sm btn-outline" style="font-size: 0.75rem; border-radius: 20px; white-space: nowrap;" onclick="askQuickAi('Suggest a quick DIY face mask recipe using home ingredients!')">🍯 DIY Face Mask</button>
+            </div>
+
+            <!-- Chat Messages Area -->
+            <div id="ai-chat-messages" style="flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; font-size: 0.9rem; max-height: 380px;">
+                <div style="background: rgba(244, 114, 182, 0.12); border: 1px solid rgba(244, 114, 182, 0.3); padding: 12px 14px; border-radius: 14px; border-top-left-radius: 2px;">
+                    Hi gorgeous! I'm Glow AI, your personal skincare consultant. Ask me anything about skincare routines, ingredients, acne, or remedies! ✨
+                </div>
+            </div>
+
+            <!-- Input Controls -->
+            <div style="padding: 12px 14px; border-top: 1px solid var(--glass-border); display: flex; gap: 8px; background: rgba(0,0,0,0.2);">
+                <input type="text" id="ai-chat-input" placeholder="Ask Glow AI a skincare question..." style="flex: 1; padding: 8px 14px; border-radius: 12px; border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: white; font-size: 0.85rem;" onkeydown="if(event.key === 'Enter') sendAiChatMessage()">
+                <button class="btn btn-sm" onclick="sendAiChatMessage()" style="border-radius: 12px; padding: 0 14px;"><i class="fa-solid fa-paper-plane"></i></button>
+            </div>
+        </div>
+    </div>
 
     <!-- Notification Container -->
     <div class="toast-container" id="toast-container"></div>
@@ -1908,9 +1953,103 @@
         renderGallery();
         renderCalendar();
 
+        // Gemini AI Skincare Assistant Integration
+        function saveGeminiKey() {
+            const val = document.getElementById('gemini-key-input').value.trim();
+            if (val) {
+                localStorage.setItem('glowGeminiApiKey', val);
+                showToast("Gemini AI API Key saved securely! 🤖✨", "success");
+            } else {
+                showToast("Please enter a valid API Key.", "info");
+            }
+        }
+
+        function openAiChatModal() {
+            document.getElementById('ai-chat-modal').style.display = 'flex';
+            const savedKey = localStorage.getItem('glowGeminiApiKey');
+            if (savedKey) {
+                document.getElementById('gemini-key-input').value = savedKey;
+            }
+        }
+
+        function closeAiChatModal() {
+            document.getElementById('ai-chat-modal').style.display = 'none';
+        }
+
+        async function fetchGeminiResponse(promptText) {
+            const savedKey = localStorage.getItem('glowGeminiApiKey') || '';
+            if (!savedKey.trim()) {
+                return "Please enter your Gemini API Key in Settings (⚙️) to get real-time AI skincare answers! 🔑\n\n(Get a free API key at aistudio.google.com)";
+            }
+
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${savedKey.trim()}`;
+            const systemPrompt = "You are Glow AI, a warm, encouraging, expert luxury skincare consultant. Keep responses concise, helpful, friendly, and formatted nicely with bullet points and emojis. Focus on safe, effective skincare advice, daily routines, and home remedies.";
+
+            try {
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [
+                                { text: systemPrompt },
+                                { text: promptText }
+                            ]
+                        }]
+                    })
+                });
+
+                const data = await res.json();
+                if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts[0]) {
+                    return data.candidates[0].content.parts[0].text;
+                } else if (data.error && data.error.message) {
+                    return `Gemini AI Notice: ${data.error.message}`;
+                } else {
+                    return "Sorry, I couldn't process that skincare request right now. Try again! ✨";
+                }
+            } catch(e) {
+                return "Network connection issue. Please check your internet connection.";
+            }
+        }
+
+        async function sendAiChatMessage() {
+            const input = document.getElementById('ai-chat-input');
+            const msg = input.value.trim();
+            if (!msg) return;
+
+            const container = document.getElementById('ai-chat-messages');
+            
+            // User message bubble
+            const userMsgDiv = document.createElement('div');
+            userMsgDiv.style.cssText = "align-self: flex-end; background: var(--primary); color: white; padding: 10px 14px; border-radius: 14px; border-top-right-radius: 2px; max-width: 80%;";
+            userMsgDiv.innerText = msg;
+            container.appendChild(userMsgDiv);
+
+            input.value = '';
+            container.scrollTop = container.scrollHeight;
+
+            // Loading indicator
+            const loadingDiv = document.createElement('div');
+            loadingDiv.style.cssText = "align-self: flex-start; background: rgba(255,255,255,0.08); padding: 10px 14px; border-radius: 14px; border-top-left-radius: 2px; max-width: 80%;";
+            loadingDiv.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="color:var(--secondary);"></i> Glow AI is thinking...';
+            container.appendChild(loadingDiv);
+            container.scrollTop = container.scrollHeight;
+
+            const reply = await fetchGeminiResponse(msg);
+            
+            loadingDiv.style.cssText = "align-self: flex-start; background: rgba(244, 114, 182, 0.12); border: 1px solid rgba(244, 114, 182, 0.3); padding: 12px 14px; border-radius: 14px; border-top-left-radius: 2px; max-width: 85%; white-space: pre-wrap;";
+            loadingDiv.innerText = reply;
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function askQuickAi(text) {
+            document.getElementById('ai-chat-input').value = text;
+            sendAiChatMessage();
+        }
+
         // Random flirty toast on load
         setTimeout(() => {
-            botSpeak();
+            if (typeof botSpeak === 'function') botSpeak();
         }, 2000);
 
     </script>
