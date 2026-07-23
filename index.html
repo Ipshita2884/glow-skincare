@@ -1114,6 +1114,7 @@
                 db = firebase.firestore();
                 auth = firebase.auth();
                 
+                let cloudUnsubscribe = null;
                 auth.onAuthStateChanged(user => {
                     if (user) {
                         currentUserEmail = user.email;
@@ -1121,15 +1122,22 @@
                         const btn = document.getElementById('sync-cal-btn');
                         if (btn) btn.innerHTML = `<i class="fa-solid fa-cloud-check"></i> ${user.email.split('@')[0]}`;
                         
-                        db.collection('users').doc(currentUserEmail).get().then(doc => {
+                        if (cloudUnsubscribe) cloudUnsubscribe();
+                        
+                        // Real-time Firestore listener for live multi-device sync
+                        cloudUnsubscribe = db.collection('users').doc(currentUserEmail).onSnapshot(doc => {
                             if (doc.exists && doc.data().state) {
-                                state = doc.data().state;
-                                localStorage.setItem('glowAdvancedStateV2', JSON.stringify(state));
-                                renderRoutines();
-                                renderCalendar();
-                                renderGallery();
+                                const cloudState = doc.data().state;
+                                if (JSON.stringify(cloudState) !== JSON.stringify(state)) {
+                                    state = cloudState;
+                                    localStorage.setItem('glowAdvancedStateV2', JSON.stringify(state));
+                                    renderRoutines();
+                                    renderCalendar();
+                                    renderGallery();
+                                    if(typeof updateStats === 'function') updateStats();
+                                }
                             }
-                        }).catch(e => console.error("Cloud load error:", e));
+                        }, e => console.error("Cloud listener error:", e));
                     }
                 });
             }
@@ -1144,7 +1152,8 @@
                     lastActive: firebase.firestore.FieldValue.serverTimestamp(),
                     streak: state.streak || 0,
                     times: state.times,
-                    history: state.history
+                    history: state.history,
+                    state: state
                 }, { merge: true }).catch(err => console.error("Cloud sync error:", err));
             }
         }
@@ -1438,10 +1447,22 @@
         });
 
         snapBtn.addEventListener('click', () => {
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            canvas.getContext('2d').drawImage(video, 0, 0);
-            const imgData = canvas.toDataURL('image/jpeg');
+            const maxDim = 400;
+            let w = video.videoWidth || 400;
+            let h = video.videoHeight || 400;
+            if (w > maxDim || h > maxDim) {
+                if (w > h) {
+                    h = Math.round((h * maxDim) / w);
+                    w = maxDim;
+                } else {
+                    w = Math.round((w * maxDim) / h);
+                    h = maxDim;
+                }
+            }
+            canvas.width = w;
+            canvas.height = h;
+            canvas.getContext('2d').drawImage(video, 0, 0, w, h);
+            const imgData = canvas.toDataURL('image/jpeg', 0.6);
             
             const timestamp = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
             if(!state.history[todayStr].selfies) state.history[todayStr].selfies = [];
@@ -1449,9 +1470,10 @@
             saveState();
             renderGallery();
             updateStats();
-            showToast("Selfie saved! Looking gorgeous! 😍", 'success');
+            renderCalendar();
+            showToast("Selfie saved & synced to cloud! 😍", 'success');
             
-            stream.getTracks().forEach(track => track.stop());
+            if (stream) stream.getTracks().forEach(track => track.stop());
             video.srcObject = null;
             startBtn.style.display = 'inline-flex';
             snapBtn.style.display = 'none';
@@ -1809,24 +1831,49 @@
                 return;
             }
             
+            showToast("Connecting to Google...", "info");
+
             if (auth) {
                 const provider = new firebase.auth.GoogleAuthProvider();
                 provider.addScope('https://www.googleapis.com/auth/calendar.events');
                 auth.signInWithPopup(provider).then(result => {
                     const user = result.user;
                     currentUserEmail = user.email;
+                    showToast(`Connected as ${user.email}! ✨`, 'success');
+                    const btn = document.getElementById('sync-cal-btn');
+                    if (btn) btn.innerHTML = `<i class="fa-solid fa-cloud-check"></i> ${user.email.split('@')[0]}`;
+                    
+                    db.collection('users').doc(currentUserEmail).get().then(doc => {
+                        if (doc.exists && doc.data().state) {
+                            state = doc.data().state;
+                            localStorage.setItem('glowAdvancedStateV2', JSON.stringify(state));
+                            renderRoutines();
+                            renderCalendar();
+                            renderGallery();
+                        } else {
+                            saveState();
+                        }
+                    });
+
                     if (result.credential && result.credential.accessToken) {
                         googleAccessToken = result.credential.accessToken;
                         if (typeof syncToGoogleCalendar === 'function') syncToGoogleCalendar();
+                    } else if (tokenClient) {
+                        tokenClient.requestAccessToken();
                     }
                 }).catch(err => {
-                    console.log("Firebase auth fallback to tokenClient:", err);
+                    console.log("Firebase auth error/fallback:", err);
+                    if (err && err.code === 'auth/popup-blocked') {
+                        showToast("Popup was blocked by your browser! Please allow popups for this site.", "error");
+                    } else if (err && err.code === 'auth/unauthorized-domain') {
+                        showToast("Domain not authorized! Add ipshita2884.github.io to Firebase -> Auth -> Settings -> Authorized domains.", "error");
+                    }
                     if(tokenClient) tokenClient.requestAccessToken();
                 });
             } else if(tokenClient) {
                 tokenClient.requestAccessToken();
             } else {
-                showToast("Google client failed to load. Check your internet or adblocker.", "error");
+                showToast("Google client failed to load. Check your internet connection.", "error");
             }
             requestNotificationPermission();
         }
