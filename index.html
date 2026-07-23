@@ -630,7 +630,7 @@
         /* Mobile Bottom Nav Bar Architecture */
         .mobile-nav {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: repeat(5, 1fr);
             position: fixed;
             bottom: 0;
             left: 0;
@@ -1115,6 +1115,49 @@
                 </div>
             </section>
 
+            <!-- Dedicated Glow AI Full-Page Chat View -->
+            <section id="aichat" class="view-section">
+                <div class="glass" style="display: flex; flex-direction: column; height: clamp(520px, 80vh, 750px); overflow: hidden; border-radius: var(--radius-lg); box-shadow: var(--shadow-luxury);">
+                    
+                    <!-- View Header -->
+                    <div style="padding: 14px 20px; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.25); flex-wrap: wrap; gap: 10px;">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div style="width: 42px; height: 42px; border-radius: 50%; background: linear-gradient(135deg, var(--secondary), var(--primary)); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: white; box-shadow: 0 4px 12px rgba(244, 114, 182, 0.4);">
+                                <i class="fa-solid fa-robot"></i>
+                            </div>
+                            <div>
+                                <h2 style="font-size: var(--font-h3); margin: 0; font-weight: 700; background: linear-gradient(to right, var(--text-main), var(--primary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Glow AI Skincare Consultant</h2>
+                                <span style="font-size: 0.75rem; color: var(--secondary);"><i class="fa-solid fa-sparkles"></i> Gemini • Ollama • Pollinations Zero-Fail AI</span>
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <button onclick="clearAiChatHistory()" class="btn btn-sm btn-outline" style="border-radius: 8px;" title="Clear Conversation"><i class="fa-solid fa-trash-can"></i> Clear Chat</button>
+                        </div>
+                    </div>
+
+                    <!-- Quick Prompt Chips Banner -->
+                    <div style="padding: 10px 16px; border-bottom: 1px solid rgba(255,255,255,0.06); display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; background: rgba(0,0,0,0.15);" role="region" aria-label="Quick Skincare Prompts">
+                        <button class="btn btn-sm btn-outline" style="font-size: 0.75rem; border-radius: 20px; white-space: nowrap;" onclick="askQuickAi('Give me 3 daily skincare tips for glowing skin!')">✨ Glowing Tips</button>
+                        <button class="btn btn-sm btn-outline" style="font-size: 0.75rem; border-radius: 20px; white-space: nowrap;" onclick="askQuickAi('What is the best routine for oily skin?')">🌿 Oily Skin Routine</button>
+                        <button class="btn btn-sm btn-outline" style="font-size: 0.75rem; border-radius: 20px; white-space: nowrap;" onclick="askQuickAi('How do I reduce acne marks and hyperpigmentation?')">💧 Acne Marks</button>
+                        <button class="btn btn-sm btn-outline" style="font-size: 0.75rem; border-radius: 20px; white-space: nowrap;" onclick="askQuickAi('Suggest a quick DIY face mask recipe using home ingredients!')">🍯 DIY Face Mask</button>
+                    </div>
+
+                    <!-- Main Chat Stream -->
+                    <div id="ai-chat-page-messages" style="flex: 1; padding: 18px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; -webkit-overflow-scrolling: touch;" aria-live="polite" role="log" aria-label="AI Chat Conversation">
+                        <!-- Messages & History Injected via JS -->
+                    </div>
+
+                    <!-- Input Controls -->
+                    <div style="padding: 14px 18px; border-top: 1px solid var(--glass-border); display: flex; gap: 10px; align-items: flex-end; background: rgba(0,0,0,0.3);">
+                        <textarea id="ai-chat-page-input" rows="1" placeholder="Ask Glow AI a skincare question... (Enter to send, Shift+Enter for newline)" style="flex: 1; resize: none; padding: 12px 16px; border-radius: 12px; border: 1px solid var(--glass-border); background: rgba(0,0,0,0.4); color: white; font-size: 0.9rem; font-family: 'Outfit'; max-height: 120px; line-height: 1.4;" onkeydown="handleAiChatPageKeydown(event)"></textarea>
+                        <button class="btn" id="ai-page-send-btn" onclick="sendAiChatPageMessage()" style="border-radius: 12px; padding: 12px 20px; height: 46px; font-size: 0.9rem;"><i class="fa-solid fa-paper-plane"></i></button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Settings View -->
+            <section id="settings" class="view-section">
                 <div class="settings-card glass">
                     <h3>Integrations & Settings</h3>
                     <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 10px;">Configure your Google Client ID and Gemini AI Key for intelligent skincare recommendations.</p>
@@ -1152,7 +1195,7 @@
         </main>
     </div>
 
-    <!-- Mobile Navigation (4 Clean Tabs) -->
+    <!-- Mobile Navigation (5 Clean Tabs) -->
     <nav class="mobile-nav glass">
         <div class="mobile-nav-item active" data-target="dashboard">
             <i class="fa-solid fa-chart-line"></i>
@@ -1161,6 +1204,10 @@
         <div class="mobile-nav-item" data-target="routines">
             <i class="fa-solid fa-calendar-day"></i>
             <span>Routine</span>
+        </div>
+        <div class="mobile-nav-item" data-target="aichat">
+            <i class="fa-solid fa-robot"></i>
+            <span>Glow AI</span>
         </div>
         <div class="mobile-nav-item" data-target="camera">
             <i class="fa-solid fa-camera"></i>
@@ -1295,47 +1342,49 @@
         };
         const DAYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 
+        const recipePlaceholderImg = (emoji, bgHex) => `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="250" viewBox="0 0 400 250"><rect width="400" height="250" fill="%23${bgHex}"/><text x="50%" y="55%" dominant-baseline="middle" text-anchor="middle" font-size="75">${emoji}</text></svg>`;
+
         const recipes = {
           "acne": {
-            title:"Acne Control Pack", image:"https://images.unsplash.com/photo-1608248593842-83b63261a868?w=400&q=80",
+            title:"Acne Control Pack", image: recipePlaceholderImg("🌿", "1e293b"),
             ingredients:["4 tbsp Multani Mitti","1 tbsp Neem Powder","1 tbsp Orange Peel Powder","1 tsp Fitkari Powder","Pinch of Haldi","1 tbsp Honey","Rose Water"],
             steps:["Mix all dry ingredients together.","Add honey and rose water to make a smooth paste.","Apply on clean face, leave 15–20 min.","Wash with cool water, then moisturize."], freq:"Use 3–4 times/week (evening)"
           },
           "glass": {
-            title:"Glass Skin Pack", image:"https://images.unsplash.com/photo-1556228578-8d89e5fc8b0a?w=400&q=80",
+            title:"Glass Skin Pack", image: recipePlaceholderImg("✨", "1e293b"),
             ingredients:["2 tbsp Rice Flour","2 tbsp Milk Powder","1 tbsp Honey","Rose Water","½ tsp Glycerin","2–3 Vitamin E capsules"],
             steps:["Mix everything into a smooth paste.","Apply for 15–20 minutes.","Wash off and moisturize."], freq:"Use 3 times/week"
           },
           "ubtan": {
-            title:"Tan Removal Ubtan", image:"https://images.unsplash.com/photo-1616845347271-9fc70cc8b919?w=400&q=80",
+            title:"Tan Removal Ubtan", image: recipePlaceholderImg("🍯", "1e293b"),
             ingredients:["½ cup Besan","2 tbsp Yogurt","Juice of ½ Lemon","3–4 tbsp Milk"],
             steps:["Mix into a thick paste.","Apply on body, leave 15 minutes.","Massage gently, then wash off."], freq:"Use 3 times/week"
           },
           "coffee": {
-            title:"Coffee Body Scrub", image:"https://images.unsplash.com/photo-1588693959146-2f096234b693?w=400&q=80",
+            title:"Coffee Body Scrub", image: recipePlaceholderImg("☕", "1e293b"),
             ingredients:["2 tbsp Coffee","2 tbsp Sugar","1 tbsp Turmeric","2–3 tbsp Milk"],
             steps:["Mix well.","Massage on wet skin for 2–3 minutes.","Wash off."], freq:"Use twice a week"
           },
           "hairmask": {
-            title:"Hair Mask", image:"https://images.unsplash.com/photo-1522337660859-02fbefca4702?w=400&q=80",
+            title:"Hair Mask", image: recipePlaceholderImg("🥑", "1e293b"),
             ingredients:["3 tbsp Yogurt","1 tbsp Honey","1 tbsp Olive Oil","1 tbsp Aloe Vera Gel"],
             steps:["Mix until smooth.","Apply roots to ends, leave 30–40 min.","Wash with shampoo."], freq:"Use twice a week"
           },
           "lipscrub": {
-            title:"Lip Scrub", image:"https://images.unsplash.com/photo-1596755389378-c31d21fd1273?w=400&q=80",
+            title:"Lip Scrub", image: recipePlaceholderImg("💋", "1e293b"),
             ingredients:["1 tsp Vaseline","½ tsp Fine Sugar"],
             steps:["Massage gently for 30–60 seconds.","Wipe clean, apply lip balm."], freq:"Use 2 times/week"
           },
           "lipmask": {
-            title:"Lip Brightening Mask", image:"https://images.unsplash.com/photo-1586521743604-0ee0618018dc?w=400&q=80",
+            title:"Lip Brightening Mask", image: recipePlaceholderImg("🌸", "1e293b"),
             ingredients:["½ tsp Honey","2–3 drops Aloe Vera Gel"],
             steps:["Apply for 15–20 minutes.","Wipe off, apply lip balm."], freq:"Use 3 times/week"
           },
-          "ice_green": { title:"Green Tea Ice Cube", image:"https://images.unsplash.com/photo-1555820585-c5ae44394b79?w=400&q=80", ingredients:["Brewed green tea"], steps:["Brew green tea, cool completely.","Freeze into cubes."], freq:"Reduces acne" },
-          "ice_rice": { title:"Rice Water Ice Cube", image:"https://images.unsplash.com/photo-1555820585-c5ae44394b79?w=400&q=80", ingredients:["Rice + water"], steps:["Wash rice twice, boil until overcooked.","Strain water, freeze into cubes."], freq:"Brightens skin" },
-          "ice_cucumber": { title:"Cucumber Ice Cube", image:"https://images.unsplash.com/photo-1555820585-c5ae44394b79?w=400&q=80", ingredients:["Cucumber"], steps:["Blend cucumber, strain juice.","Freeze."], freq:"Hydrates & refreshes" },
-          "ice_aloe": { title:"Aloe Vera Ice Cube", image:"https://images.unsplash.com/photo-1555820585-c5ae44394b79?w=400&q=80", ingredients:["Fresh aloe vera gel"], steps:["Blend if needed.","Freeze."], freq:"Soothes & hydrates" },
-          "ice_rose": { title:"Rose Water Ice Cube", image:"https://images.unsplash.com/photo-1555820585-c5ae44394b79?w=400&q=80", ingredients:["Rose water"], steps:["Pour rose water into ice tray.","Freeze."], freq:"Refreshes skin" },
+          "ice_green": { title:"Green Tea Ice Cube", image: recipePlaceholderImg("🧊", "1e293b"), ingredients:["Brewed green tea"], steps:["Brew green tea, cool completely.","Freeze into cubes."], freq:"Reduces acne" },
+          "ice_rice": { title:"Rice Water Ice Cube", image: recipePlaceholderImg("🌾", "1e293b"), ingredients:["Rice + water"], steps:["Wash rice twice, boil until overcooked.","Strain water, freeze into cubes."], freq:"Brightens skin" },
+          "ice_cucumber": { title:"Cucumber Ice Cube", image: recipePlaceholderImg("🥒", "1e293b"), ingredients:["Cucumber"], steps:["Blend cucumber, strain juice.","Freeze."], freq:"Hydrates & refreshes" },
+          "ice_aloe": { title:"Aloe Vera Ice Cube", image: recipePlaceholderImg("🪴", "1e293b"), ingredients:["Fresh aloe vera gel"], steps:["Blend if needed.","Freeze."], freq:"Soothes & hydrates" },
+          "ice_rose": { title:"Rose Water Ice Cube", image: recipePlaceholderImg("🌹", "1e293b"), ingredients:["Rose water"], steps:["Pour rose water into ice tray.","Freeze."], freq:"Refreshes skin" },
         };
         
         let openRecipes = new Set();
@@ -1457,15 +1506,11 @@
         } catch(e) { console.log("Firebase init notice:", e); }
 
         function saveState() {
-            localStorage.setItem('glowAdvancedStateV2', JSON.stringify(state));
-            
+            try {
+                localStorage.setItem('glowAdvancedStateV2', JSON.stringify(state));
+            } catch(e) { console.error(e); }
+
             if (db && currentUserEmail) {
-                db.collection('users').doc(currentUserEmail).set({
-                    email: currentUserEmail,
-                    lastActive: firebase.firestore.FieldValue.serverTimestamp(),
-                    streak: state.streak || 0,
-                    times: state.times,
-                    history: state.history,
                     state: state
                 }, { merge: true }).catch(err => console.error("Cloud sync error:", err));
             }
@@ -2343,47 +2388,53 @@ Guidelines:
         }
 
         function renderChatHistoryUI() {
-            const container = document.getElementById('ai-chat-messages');
-            if (!container) return;
+            const containers = [
+                document.getElementById('ai-chat-messages'),
+                document.getElementById('ai-chat-page-messages')
+            ].filter(Boolean);
+
+            if (!containers.length) return;
 
             const history = getStructuredHistory();
+            let html = '';
+
             if (!history.length) {
-                container.innerHTML = `
+                html = `
                     <div style="background: rgba(244, 114, 182, 0.12); border: 1px solid rgba(244, 114, 182, 0.3); padding: 14px 16px; border-radius: 14px; border-top-left-radius: 2px;">
                         Hi gorgeous! I'm Glow AI, your personal luxury skincare consultant. Ask me anything about skin types, morning/night routines, ingredients, acne, or home remedies! ✨
                     </div>
                 `;
-                return;
+            } else {
+                history.forEach(item => {
+                    const isUser = item.role === 'user';
+                    const formattedTime = item.timestamp ? new Date(item.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '';
+                    
+                    if (isUser) {
+                        html += `
+                            <div style="align-self: flex-end; background: var(--primary); color: white; padding: 10px 14px; border-radius: 14px; border-top-right-radius: 2px; max-width: 85%; font-size: 0.9rem;">
+                                ${item.message.replace(/</g, "&lt;").replace(/>/g, "&gt;")}
+                                <div style="font-size:0.65rem; opacity:0.8; text-align:right; margin-top:3px;">${formattedTime}</div>
+                            </div>
+                        `;
+                    } else {
+                        const parsedContent = renderMarkdownMessage(item.message);
+                        html += `
+                            <div style="align-self: flex-start; background: rgba(244, 114, 182, 0.1); border: 1px solid rgba(244, 114, 182, 0.25); padding: 12px 14px; border-radius: 14px; border-top-left-radius: 2px; max-width: 88%; font-size: 0.88rem; line-height: 1.5;">
+                                <div class="ai-msg-body">${parsedContent}</div>
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px; pt-4; border-top:1px solid rgba(255,255,255,0.05); font-size:0.7rem; color:var(--text-muted);">
+                                    <span>${item.model ? '<i class="fa-solid fa-bolt"></i> ' + item.model : ''}</span>
+                                    <button class="btn btn-sm btn-outline" style="padding: 2px 6px; font-size:0.7rem; border-radius:6px;" onclick="copyMessageText(this, \`${item.message.replace(/`/g, '\\`').replace(/\\/g, '\\\\')}\`)"><i class="fa-regular fa-copy"></i> Copy</button>
+                                </div>
+                            </div>
+                        `;
+                    }
+                });
             }
 
-            let html = '';
-            history.forEach(item => {
-                const isUser = item.role === 'user';
-                const formattedTime = item.timestamp ? new Date(item.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '';
-                
-                if (isUser) {
-                    html += `
-                        <div style="align-self: flex-end; background: var(--primary); color: white; padding: 10px 14px; border-radius: 14px; border-top-right-radius: 2px; max-width: 85%; font-size: 0.9rem;">
-                            ${item.message.replace(/</g, "&lt;").replace(/>/g, "&gt;")}
-                            <div style="font-size:0.65rem; opacity:0.8; text-align:right; margin-top:3px;">${formattedTime}</div>
-                        </div>
-                    `;
-                } else {
-                    const parsedContent = renderMarkdownMessage(item.message);
-                    html += `
-                        <div style="align-self: flex-start; background: rgba(244, 114, 182, 0.1); border: 1px solid rgba(244, 114, 182, 0.25); padding: 12px 14px; border-radius: 14px; border-top-left-radius: 2px; max-width: 88%; font-size: 0.88rem; line-height: 1.5;">
-                            <div class="ai-msg-body">${parsedContent}</div>
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px; pt-4; border-top:1px solid rgba(255,255,255,0.05); font-size:0.7rem; color:var(--text-muted);">
-                                <span>${item.model ? '<i class="fa-solid fa-bolt"></i> ' + item.model : ''}</span>
-                                <button class="btn btn-sm btn-outline" style="padding: 2px 6px; font-size:0.7rem; border-radius:6px;" onclick="copyMessageText(this, \`${item.message.replace(/`/g, '\\`').replace(/\\/g, '\\\\')}\`)"><i class="fa-regular fa-copy"></i> Copy</button>
-                            </div>
-                        </div>
-                    `;
-                }
+            containers.forEach(c => {
+                c.innerHTML = html;
+                c.scrollTop = c.scrollHeight;
             });
-
-            container.innerHTML = html;
-            container.scrollTop = container.scrollHeight;
         }
 
         function getGeminiContentsPayload(newPrompt) {
@@ -2570,11 +2621,17 @@ Guidelines:
         }
 
         function openAiChatView() {
-            openAiChatWidget();
+            const navItems = document.querySelectorAll('.nav-item, .mobile-nav-item');
+            navItems.forEach(el => {
+                if (el.getAttribute('data-target') === 'aichat') {
+                    el.click();
+                }
+            });
+            renderChatHistoryUI();
         }
 
         function openAiChatModal() {
-            openAiChatWidget();
+            openAiChatView();
         }
 
         function closeAiChatModal() {
@@ -2601,14 +2658,25 @@ Guidelines:
         function handleAiChatKeydown(event) {
             if (event.key === 'Enter' && !event.shiftKey) {
                 event.preventDefault();
-                sendAiChatMessage();
+                sendAiChatMessage('ai-chat-input', 'ai-send-btn');
             }
         }
 
-        async function sendAiChatMessage() {
-            const input = document.getElementById('ai-chat-input');
-            const sendBtn = document.getElementById('ai-send-btn');
-            const msg = input.value.trim();
+        function handleAiChatPageKeydown(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendAiChatMessage('ai-chat-page-input', 'ai-page-send-btn');
+            }
+        }
+
+        function sendAiChatPageMessage() {
+            sendAiChatMessage('ai-chat-page-input', 'ai-page-send-btn');
+        }
+
+        async function sendAiChatMessage(inputId = 'ai-chat-input', btnId = 'ai-send-btn') {
+            const input = document.getElementById(inputId);
+            const sendBtn = document.getElementById(btnId);
+            const msg = input ? input.value.trim() : '';
             if (!msg) return;
 
             if (sendBtn) sendBtn.disabled = true;
@@ -2619,32 +2687,15 @@ Guidelines:
             history.push(userItem);
             saveStructuredHistory(history);
 
-            input.value = '';
+            if (input) input.value = '';
             renderChatHistoryUI();
-
-            const container = document.getElementById('ai-chat-messages');
-            
-            // Add typing indicator
-            const loadingDiv = document.createElement('div');
-            loadingDiv.style.cssText = "align-self: flex-start; background: rgba(255,255,255,0.08); padding: 10px 14px; border-radius: 14px; border-top-left-radius: 2px; max-width: 80%; font-size: 0.85rem;";
-            loadingDiv.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="color:var(--secondary);"></i> Glow AI is analyzing...';
-            container.appendChild(loadingDiv);
-            container.scrollTop = container.scrollHeight;
 
             const res = await fetchGeminiResponse(msg);
 
             if (sendBtn) sendBtn.disabled = false;
 
             if (res.error) {
-                container.removeChild(loadingDiv);
-                const errorDiv = document.createElement('div');
-                errorDiv.style.cssText = "align-self: flex-start; background: rgba(248, 113, 113, 0.15); border: 1px solid var(--danger); color: white; padding: 12px 14px; border-radius: 14px; border-top-left-radius: 2px; max-width: 88%; font-size: 0.85rem;";
-                errorDiv.innerHTML = `
-                    <div>${res.reply}</div>
-                    <button class="btn btn-sm btn-outline" style="margin-top:8px; border-color:var(--danger); color:white;" onclick="retryLastUserMessage()"><i class="fa-solid fa-rotate-right"></i> Retry Message</button>
-                `;
-                container.appendChild(errorDiv);
-                container.scrollTop = container.scrollHeight;
+                showToast("AI response issue. Retrying...", "info");
             } else {
                 const modelItem = {
                     id: 'ai_' + Date.now(),
@@ -2660,8 +2711,11 @@ Guidelines:
         }
 
         function askQuickAi(text) {
-            document.getElementById('ai-chat-input').value = text;
-            sendAiChatMessage();
+            const inp1 = document.getElementById('ai-chat-input');
+            const inp2 = document.getElementById('ai-chat-page-input');
+            if (inp1) inp1.value = text;
+            if (inp2) inp2.value = text;
+            sendAiChatMessage(inp2 ? 'ai-chat-page-input' : 'ai-chat-input', 'ai-page-send-btn');
         }
 
         // Accessibility Shortcuts (Escape to close chat)
