@@ -1,0 +1,1777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Glow - Advanced Skincare Tracker</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --glass-bg: rgba(30, 41, 59, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --primary: #f472b6; /* pink */
+            --primary-hover: #db2777;
+            --secondary: #38bdf8; /* blue */
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --success: #34d399;
+            --danger: #f87171;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Outfit', sans-serif;
+            /* Hide default cursor */
+            cursor: none !important;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(244, 114, 182, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(56, 189, 248, 0.15) 0px, transparent 50%);
+            background-attachment: fixed;
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        /* Custom Cursor */
+        #custom-cursor {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: rgba(244, 114, 182, 0.8);
+            pointer-events: none;
+            z-index: 99999;
+            transform: translate(-50%, -50%);
+            transition: width 0.2s, height 0.2s, background 0.2s;
+            box-shadow: 0 0 15px rgba(244, 114, 182, 0.8);
+            mix-blend-mode: screen;
+        }
+
+        #custom-cursor-follower {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 2px solid rgba(56, 189, 248, 0.6);
+            pointer-events: none;
+            z-index: 99998;
+            transform: translate(-50%, -50%);
+            transition: transform 0.1s ease-out, width 0.2s, height 0.2s;
+        }
+
+        /* Interactive Elements */
+        a, button, input, .nav-item, .task-checkbox, .date-chip, .bot-icon {
+            cursor: none !important;
+        }
+        
+        body:hover #custom-cursor {
+            opacity: 1;
+        }
+
+        /* Glassmorphism utility */
+        .glass {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+        }
+
+        /* Layout */
+        .app-container {
+            display: flex;
+            flex: 1;
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            gap: 20px;
+        }
+
+        /* Sidebar / Nav */
+        .sidebar {
+            width: 250px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            height: calc(100vh - 40px);
+            position: sticky;
+            top: 20px;
+        }
+
+        .logo {
+            font-size: 1.8rem;
+            font-weight: 700;
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .nav-items {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .nav-item {
+            padding: 12px 16px;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .nav-item:hover, .nav-item.active {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--primary);
+            transform: translateX(5px);
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 24px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            box-shadow: 0 0 10px var(--primary);
+        }
+
+        /* Views */
+        .view-section {
+            display: none;
+            animation: fadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .view-section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        /* Dashboard */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            transition: transform 0.3s;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+
+        .stat-card i {
+            font-size: 2rem;
+            color: var(--primary);
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        .stat-label {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .chart-container {
+            padding: 24px;
+            margin-bottom: 24px;
+            height: 300px;
+        }
+
+        /* Routines */
+        .date-strip {
+            display: flex;
+            gap: 12px;
+            overflow-x: auto;
+            padding: 10px 0;
+            margin-bottom: 20px;
+            scrollbar-width: thin;
+        }
+
+        .date-chip {
+            padding: 10px 16px;
+            border-radius: 20px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--glass-border);
+            white-space: nowrap;
+            transition: all 0.3s;
+            text-align: center;
+            min-width: 80px;
+        }
+
+        .date-chip:hover {
+            background: rgba(255,255,255,0.1);
+        }
+
+        .date-chip.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+            box-shadow: 0 0 10px rgba(244, 114, 182, 0.5);
+        }
+
+        .routine-group {
+            margin-bottom: 30px;
+        }
+
+        .routine-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--glass-border);
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .routine-meta {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .task-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .task-card {
+            padding: 14px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: transform 0.2s, background 0.3s;
+            background: rgba(0,0,0,0.1);
+            border-radius: 12px;
+        }
+
+        .task-card:hover {
+            transform: translateX(4px);
+            background: rgba(255,255,255,0.05);
+        }
+
+        .task-info {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .task-checkbox {
+            width: 24px;
+            height: 24px;
+            border-radius: 6px;
+            border: 2px solid var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+        }
+
+        .task-checkbox.checked {
+            background: var(--primary);
+        }
+
+        .task-checkbox.checked i {
+            display: block;
+            color: white;
+            font-size: 12px;
+        }
+
+        .task-checkbox i {
+            display: none;
+        }
+
+        .task-details h3 {
+            font-size: 1rem;
+            font-weight: 500;
+        }
+
+        .time-picker {
+            background: rgba(0,0,0,0.3);
+            border: 1px solid var(--glass-border);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-family: 'Outfit';
+        }
+
+        .btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+        }
+
+        .btn:hover {
+            background: var(--primary-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(244, 114, 182, 0.4);
+        }
+        
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--primary);
+            color: var(--primary);
+        }
+
+        .btn-outline:hover {
+            background: rgba(244, 114, 182, 0.1);
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 0.8rem;
+        }
+
+        /* Camera / Selfie */
+        .selfie-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 20px;
+            gap: 20px;
+        }
+
+        .video-wrapper {
+            width: 100%;
+            max-width: 400px;
+            aspect-ratio: 3/4;
+            border-radius: 16px;
+            overflow: hidden;
+            position: relative;
+            background: #000;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        #camera-feed {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 12px;
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        .gallery img {
+            width: 100%;
+            aspect-ratio: 1;
+            object-fit: cover;
+            border-radius: 8px;
+            border: 2px solid var(--glass-border);
+            transition: transform 0.3s;
+        }
+        
+        .gallery img:hover {
+            transform: scale(1.05);
+        }
+
+        /* Recipes */
+        .recipe-details {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-in-out;
+            width: 100%;
+        }
+
+        .recipe-details.open {
+            max-height: 600px;
+        }
+
+        .recipe-inner {
+            background: rgba(0,0,0,0.2);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 15px;
+            margin-top: 12px;
+            font-size: 0.9rem;
+        }
+
+        .recipe-img {
+            width: 100%;
+            height: 120px;
+            object-fit: cover;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+
+        .recipe-inner h4 {
+            color: var(--secondary);
+            margin-bottom: 8px;
+        }
+
+        .ingredient-chip {
+            display: inline-block;
+            background: rgba(244, 114, 182, 0.15);
+            border: 1px solid rgba(244, 114, 182, 0.4);
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            margin: 2px 4px 4px 0;
+        }
+
+        .recipe-steps {
+            margin-top: 10px;
+            padding-left: 18px;
+            color: var(--text-muted);
+        }
+
+        .recipe-steps li {
+            margin-bottom: 6px;
+        }
+
+        .btn-recipe {
+            background: transparent;
+            border: 1px solid var(--secondary);
+            color: var(--secondary);
+            border-radius: 50%;
+            width: 26px;
+            height: 26px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: bold;
+            font-family: 'Outfit';
+            transition: all 0.2s;
+            margin-left: 10px;
+        }
+
+        .btn-recipe:hover {
+            background: var(--secondary);
+            color: white;
+            box-shadow: 0 0 10px var(--secondary);
+        }
+
+        /* Settings */
+        .settings-card {
+            padding: 24px;
+        }
+
+        /* Floating Bot */
+        .bot-container {
+            position: fixed;
+            bottom: 30px;
+            left: 30px;
+            z-index: 999;
+            display: flex;
+            align-items: flex-end;
+            gap: 15px;
+        }
+
+        .bot-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--secondary), var(--primary));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            color: white;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+            animation: float 3s ease-in-out infinite;
+            position: relative;
+        }
+        
+        .bot-icon::after {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 2px solid var(--primary);
+            animation: pulse 2s infinite;
+        }
+
+        .bot-bubble {
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            padding: 12px 16px;
+            border-radius: 16px;
+            border-bottom-left-radius: 0;
+            max-width: 200px;
+            font-size: 0.9rem;
+            opacity: 0;
+            transform: translateY(10px) scale(0.9);
+            transition: all 0.3s;
+            pointer-events: none;
+        }
+        
+        .bot-container:hover .bot-bubble {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 0.8; }
+            100% { transform: scale(1.3); opacity: 0; }
+        }
+
+        /* Notifications Toast */
+        .toast-container {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 9999;
+        }
+
+        .toast {
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+            animation: slideInRight 0.4s cubic-bezier(0.4, 0, 0.2, 1), fadeOut 0.5s ease 5.5s forwards;
+            max-width: 350px;
+        }
+
+        .toast-content h4 {
+            margin: 0 0 4px 0;
+            font-size: 0.95rem;
+            color: var(--primary);
+        }
+        
+        .toast-content p {
+            margin: 0;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            line-height: 1.3;
+        }
+
+        .toast i {
+            font-size: 1.5rem;
+        }
+
+        .toast.success i { color: var(--success); }
+        .toast.info i { color: var(--primary); }
+
+        @keyframes slideInRight {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; visibility: hidden; }
+        }
+
+        /* Alarm Modal Animation */
+        @keyframes pulseAlarm {
+            0% { box-shadow: 0 0 0 0 rgba(244, 114, 182, 0.7); }
+            70% { box-shadow: 0 0 0 20px rgba(244, 114, 182, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(244, 114, 182, 0); }
+        }
+
+        /* Mobile Responsive */
+        .mobile-nav {
+            display: none;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            padding: 12px 24px;
+            justify-content: space-between;
+            z-index: 1000;
+            border-top-left-radius: 20px;
+            border-top-right-radius: 20px;
+            border-bottom-left-radius: 0;
+            border-bottom-right-radius: 0;
+            border-bottom: none;
+        }
+
+        .mobile-nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            color: var(--text-muted);
+            font-size: 0.75rem;
+        }
+
+        .mobile-nav-item.active {
+            color: var(--primary);
+        }
+
+        .mobile-nav-item i {
+            font-size: 1.2rem;
+        }
+
+        @media (max-width: 768px) {
+            #custom-cursor, #custom-cursor-follower {
+                display: none; /* Disable custom cursor on mobile */
+            }
+            * { cursor: auto !important; }
+            
+            .app-container {
+                padding: 10px;
+                padding-bottom: 80px;
+            }
+            .sidebar {
+                display: none;
+            }
+            .mobile-nav {
+                display: flex;
+            }
+            .header {
+                padding: 12px;
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 15px;
+            }
+            .stats-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+            .bot-container {
+                bottom: 80px;
+                left: 15px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+    <!-- Custom Cursor Elements -->
+    <div id="custom-cursor"></div>
+    <div id="custom-cursor-follower"></div>
+
+    <!-- Floating Bot -->
+    <div class="bot-container" onclick="botSpeak()">
+        <div class="bot-icon">
+            <i class="fa-solid fa-robot"></i>
+        </div>
+        <div class="bot-bubble" id="bot-msg">
+            Hi beautiful! Need some skincare motivation? ✨
+        </div>
+    </div>
+
+    <div class="app-container">
+        <!-- Desktop Sidebar -->
+        <aside class="sidebar glass">
+            <div class="logo">
+                <i class="fa-solid fa-wand-magic-sparkles"></i> Glow
+            </div>
+            <nav class="nav-items">
+                <div class="nav-item active" data-target="dashboard">
+                    <i class="fa-solid fa-chart-line"></i> Dashboard
+                </div>
+                <div class="nav-item" data-target="routines">
+                    <i class="fa-solid fa-calendar-day"></i> Routines
+                </div>
+                <div class="nav-item" data-target="camera">
+                    <i class="fa-solid fa-camera"></i> Selfies
+                </div>
+                <div class="nav-item" data-target="settings">
+                    <i class="fa-solid fa-gear"></i> Settings
+                </div>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="header glass">
+                <h2>Hello, Gorgeous ✨</h2>
+                <div class="user-info">
+                    <button class="btn btn-outline" id="sync-cal-btn" onclick="authenticateGoogle()"><i class="fa-brands fa-google"></i> Connect</button>
+                    <div class="avatar">G</div>
+                </div>
+            </header>
+
+            <!-- Dashboard View -->
+            <section id="dashboard" class="view-section active">
+                <div class="stats-grid">
+                    <div class="stat-card glass">
+                        <i class="fa-solid fa-fire"></i>
+                        <div class="stat-value" id="streak-val">0</div>
+                        <div class="stat-label">Day Streak</div>
+                    </div>
+                    <div class="stat-card glass">
+                        <i class="fa-solid fa-check-double"></i>
+                        <div class="stat-value" id="completed-val">0</div>
+                        <div class="stat-label">Total Routines Done</div>
+                    </div>
+                    <div class="stat-card glass">
+                        <i class="fa-solid fa-camera-retro"></i>
+                        <div class="stat-value" id="selfies-val">0</div>
+                        <div class="stat-label">Selfies Taken</div>
+                    </div>
+                </div>
+                <div class="calendar-wrapper glass" style="padding: 24px; margin-bottom: 24px; overflow-x: auto; -webkit-overflow-scrolling: touch;">
+                    <h3>Monthly Summary</h3>
+                    <div id="calendar-grid" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; margin-top: 20px; min-width: 600px;">
+                        <!-- JS injected -->
+                    </div>
+                </div>
+
+                <!-- Summary Modal -->
+                <div id="summary-modal" style="display:none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.8); z-index: 10000; align-items:center; justify-content:center;">
+                    <div class="glass" style="width: 90%; max-width: 500px; padding: 24px; position: relative;">
+                        <button onclick="document.getElementById('summary-modal').style.display='none'" style="position:absolute; top:15px; right:15px; background:transparent; border:none; color:white; font-size:1.5rem;"><i class="fa-solid fa-times"></i></button>
+                        <h3 id="modal-date-title">Date</h3>
+                        <div id="modal-routine-status" style="margin: 15px 0; color: var(--primary);"></div>
+                        <h4 style="margin-bottom: 10px;">Selfies</h4>
+                        <div id="modal-selfies-gallery" style="display:flex; gap:10px; overflow-x:auto;"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Routines View -->
+            <section id="routines" class="view-section">
+                <div class="glass" style="padding: 24px;">
+                    
+                    <!-- Calendar Strip -->
+                    <div class="date-strip" id="date-strip">
+                        <!-- Dates injected via JS -->
+                    </div>
+
+                    <!-- Morning Routine -->
+                    <div class="routine-group">
+                        <div class="routine-header">
+                            <div>
+                                <h3 style="color: var(--secondary);"><i class="fa-regular fa-sun"></i> Morning Routine</h3>
+                            </div>
+                            <div class="routine-meta">
+                                <input type="time" id="morning-time" class="time-picker" value="08:00">
+                                <button class="btn btn-sm" onclick="updateRoutineTime('morning')"><i class="fa-solid fa-save"></i> Save</button>
+                                <button class="btn btn-sm btn-outline" onclick="markAll('morning')"><i class="fa-solid fa-check-double"></i> Mark All</button>
+                            </div>
+                        </div>
+                        <div class="task-list" id="morning-list">
+                            <!-- Tasks injected via JS -->
+                        </div>
+                    </div>
+
+                    <!-- Night Routine -->
+                    <div class="routine-group" style="margin-top: 40px;">
+                        <div class="routine-header">
+                            <div>
+                                <h3 style="color: var(--primary);"><i class="fa-regular fa-moon"></i> Night Routine</h3>
+                            </div>
+                            <div class="routine-meta">
+                                <input type="time" id="night-time" class="time-picker" value="21:00">
+                                <button class="btn btn-sm" onclick="updateRoutineTime('night')"><i class="fa-solid fa-save"></i> Save</button>
+                                <button class="btn btn-sm btn-outline" onclick="markAll('night')"><i class="fa-solid fa-check-double"></i> Mark All</button>
+                            </div>
+                        </div>
+                        <div class="task-list" id="night-list">
+                            <!-- Tasks injected via JS -->
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+
+            <!-- Camera View -->
+            <section id="camera" class="view-section">
+                <div class="glass selfie-container">
+                    <h3>Daily Selfie</h3>
+                    <p style="color: var(--text-muted); text-align: center;">Capture your gorgeous skin's progress today.</p>
+                    
+                    <div class="video-wrapper">
+                        <video id="camera-feed" autoplay playsinline></video>
+                    </div>
+                    
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn" id="start-camera"><i class="fa-solid fa-video"></i> Start Camera</button>
+                        <button class="btn" id="take-photo" style="display:none;"><i class="fa-solid fa-camera"></i> Snap!</button>
+                    </div>
+
+                    <canvas id="photo-canvas" style="display: none;"></canvas>
+                    
+                    <div style="width: 100%; margin-top: 20px;">
+                        <h4>Gallery</h4>
+                        <div class="gallery" id="gallery">
+                            <!-- Images injected via JS -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Settings View -->
+            <section id="settings" class="view-section">
+                <div class="settings-card glass">
+                    <h3>Integrations & Settings</h3>
+                    <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 10px;">Your Google Client ID is securely built-in for seamless integration.</p>
+                    <br>
+                    <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; border: 1px solid var(--glass-border);">
+                        <strong>Client ID:</strong> <div style="color: var(--secondary); word-break: break-all; margin-top: 4px; font-size: 0.9rem;">990352693904-5fd2efdcalkqjadffc020lhc4hh60eck.apps.googleusercontent.com</div>
+                        <div style="margin-top: 10px;">
+                            <span style="color: var(--success); font-size: 0.8rem;"><i class="fa-solid fa-check-circle"></i> Ready for sync</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- Mobile Navigation -->
+    <nav class="mobile-nav glass">
+        <div class="mobile-nav-item active" data-target="dashboard">
+            <i class="fa-solid fa-chart-line"></i>
+            <span>Home</span>
+        </div>
+        <div class="mobile-nav-item" data-target="routines">
+            <i class="fa-solid fa-calendar-day"></i>
+            <span>Routine</span>
+        </div>
+        <div class="mobile-nav-item" data-target="camera">
+            <i class="fa-solid fa-camera"></i>
+            <span>Selfies</span>
+        </div>
+        <div class="mobile-nav-item" data-target="settings">
+            <i class="fa-solid fa-gear"></i>
+            <span>Settings</span>
+        </div>
+    </nav>
+
+    <!-- Notification Container -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- Alarm Modal -->
+    <div id="alarm-modal" style="display:none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.85); z-index: 10000; align-items:center; justify-content:center; backdrop-filter: blur(5px);">
+        <div class="glass" style="width: 92%; max-width: 400px; padding: clamp(20px, 5vw, 30px); text-align: center; border: 2px solid var(--primary); border-radius: clamp(16px, 4vw, 24px); animation: pulseAlarm 2s infinite;">
+            <i class="fa-regular fa-bell fa-shake" style="font-size: clamp(2.5rem, 8vw, 3rem); color: var(--primary); margin-bottom: clamp(10px, 4vw, 20px);"></i>
+            <h2 style="font-size: clamp(1.5rem, 7vw, 2rem); margin-bottom: clamp(6px, 2vw, 10px); background: linear-gradient(to right, var(--primary), var(--secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;" id="alarm-title">Routine Time!</h2>
+            <p style="color: var(--text-muted); margin-bottom: clamp(20px, 6vw, 30px); font-size: clamp(0.9rem, 4vw, 1.1rem); line-height: 1.3;" id="alarm-desc">It's time for your skincare routine.</p>
+            <div style="display: flex; gap: clamp(10px, 3vw, 15px); justify-content: center; flex-wrap: wrap;">
+                <button class="btn btn-outline" style="flex: 1 1 120px; padding: clamp(10px, 3vw, 12px); font-size: clamp(0.9rem, 3.5vw, 1rem);" onclick="snoozeAlarm()"><i class="fa-solid fa-clock-rotate-left"></i> Snooze (5m)</button>
+                <button class="btn" style="flex: 1 1 120px; padding: clamp(10px, 3vw, 12px); font-size: clamp(0.9rem, 3.5vw, 1rem);" onclick="turnOffAlarm()"><i class="fa-solid fa-power-off"></i> Turn Off</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Custom Cursor Logic
+        const cursor = document.getElementById('custom-cursor');
+        const follower = document.getElementById('custom-cursor-follower');
+        let mouseX = window.innerWidth / 2;
+        let mouseY = window.innerHeight / 2;
+        let folX = window.innerWidth / 2;
+        let folY = window.innerHeight / 2;
+
+        document.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+            cursor.style.left = mouseX + 'px';
+            cursor.style.top = mouseY + 'px';
+        });
+
+        function animateFollower() {
+            folX += (mouseX - folX) * 0.15;
+            folY += (mouseY - folY) * 0.15;
+            follower.style.left = folX + 'px';
+            follower.style.top = folY + 'px';
+            requestAnimationFrame(animateFollower);
+        }
+        animateFollower();
+
+        // Hover effects for cursor
+        document.querySelectorAll('a, button, .nav-item, .task-checkbox, .date-chip, .bot-icon, input').forEach(el => {
+            el.addEventListener('mouseenter', () => {
+                cursor.style.transform = 'translate(-50%, -50%) scale(1.5)';
+                follower.style.transform = 'translate(-50%, -50%) scale(1.5)';
+                follower.style.borderColor = 'var(--primary)';
+            });
+            el.addEventListener('mouseleave', () => {
+                cursor.style.transform = 'translate(-50%, -50%) scale(1)';
+                follower.style.transform = 'translate(-50%, -50%) scale(1)';
+                follower.style.borderColor = 'rgba(56, 189, 248, 0.6)';
+            });
+        });
+
+        // Flirty & Loving Quotes
+        const lovingQuotes = [
+            "You are literally glowing today! ✨ Has anyone told you how stunning you look?",
+            "Damn... looking at that skin, you're stealing my heart all over again! 💖",
+            "Hey gorgeous, just a reminder that you're the most beautiful person I know. 😘",
+            "Your skincare routine is working, but honestly you were perfect to begin with. 😉",
+            "Are you a camera? Because every time I look at you, I smile! Keep glowing, babe. 📸❤️",
+            "Taking care of yourself is sexy. And you're doing an amazing job. 🔥",
+            "Just popped in to say I love you, and your skin looks flawless today! 🌸"
+        ];
+
+        // State Management
+        function m(name, recipeKey, note){ 
+            return {name, recipeKey, note, done: false, id: Math.random().toString(36).substring(7)}; 
+        }
+
+        const plan = {
+          Mon: { morning:[ m("Face Wash"), m("Green Tea Ice Cube","ice_green"), m("Moisturizer"), m("Sunscreen SPF 50"), m("SPF Lip Balm") ], night:[ m("Acne Control Pack","acne","15–20 min, wash, moisturize"), m("Moisturizer"), m("Lip Care","", "Apply Petroleum Jelly before sleeping") ], bath:[ m("Tan Removal Ubtan","ubtan") ], hair:[] },
+          Tue: { morning:[ m("Face Wash"), m("Rice Water Ice Cube","ice_rice"), m("Moisturizer"), m("Sunscreen SPF 50"), m("SPF Lip Balm") ], night:[ m("Glass Skin Pack","glass","15–20 min, wash, moisturize"), m("Lip Brightening Mask","lipmask","then lip balm") ], bath:[ m("Normal Bath") ], hair:[] },
+          Wed: { morning:[ m("Face Wash"), m("Cucumber Ice Cube","ice_cucumber"), m("Moisturizer"), m("Sunscreen SPF 50"), m("SPF Lip Balm") ], night:[ m("Acne Control Pack","acne"), m("Moisturizer"), m("Lip Scrub","lipscrub","then lip balm") ], bath:[ m("Coffee Body Scrub","coffee"), m("Tan Removal Ubtan","ubtan") ], hair:[ m("Hair Mask","hairmask","30–40 min, then shampoo") ] },
+          Thu: { morning:[ m("Face Wash"), m("Green Tea Ice Cube","ice_green"), m("Moisturizer"), m("Sunscreen SPF 50"), m("SPF Lip Balm") ], night:[ m("Glass Skin Pack","glass"), m("Lip Brightening Mask","lipmask") ], bath:[ m("Normal Bath") ], hair:[] },
+          Fri: { morning:[ m("Face Wash"), m("Rice Water Ice Cube","ice_rice"), m("Moisturizer"), m("Sunscreen SPF 50"), m("SPF Lip Balm") ], night:[ m("Acne Control Pack","acne"), m("Moisturizer"), m("Petroleum Jelly") ], bath:[ m("Tan Removal Ubtan","ubtan") ], hair:[] },
+          Sat: { morning:[ m("Face Wash"), m("Aloe Vera Ice Cube","ice_aloe"), m("Moisturizer"), m("Sunscreen SPF 50"), m("SPF Lip Balm") ], night:[ m("Glass Skin Pack","glass"), m("Lip Scrub","lipscrub","then lip balm") ], bath:[ m("Normal Bath") ], hair:[] },
+          Sun: { morning:[ m("Face Wash"), m("Rose Water Ice Cube","ice_rose"), m("Moisturizer"), m("Sunscreen SPF 50"), m("SPF Lip Balm") ], night:[ m("Acne Control Pack","acne"), m("Lip Brightening Mask","lipmask"), m("Moisturizer") ], bath:[ m("Coffee Body Scrub","coffee"), m("Tan Removal Ubtan","ubtan") ], hair:[ m("Hair Mask","hairmask","30–40 min, then shampoo") ] }
+        };
+        const DAYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+
+        const recipes = {
+          "acne": {
+            title:"Acne Control Pack", image:"https://images.unsplash.com/photo-1608248593842-83b63261a868?w=400&q=80",
+            ingredients:["4 tbsp Multani Mitti","1 tbsp Neem Powder","1 tbsp Orange Peel Powder","1 tsp Fitkari Powder","Pinch of Haldi","1 tbsp Honey","Rose Water"],
+            steps:["Mix all dry ingredients together.","Add honey and rose water to make a smooth paste.","Apply on clean face, leave 15–20 min.","Wash with cool water, then moisturize."], freq:"Use 3–4 times/week (evening)"
+          },
+          "glass": {
+            title:"Glass Skin Pack", image:"https://images.unsplash.com/photo-1556228578-8d89e5fc8b0a?w=400&q=80",
+            ingredients:["2 tbsp Rice Flour","2 tbsp Milk Powder","1 tbsp Honey","Rose Water","½ tsp Glycerin","2–3 Vitamin E capsules"],
+            steps:["Mix everything into a smooth paste.","Apply for 15–20 minutes.","Wash off and moisturize."], freq:"Use 3 times/week"
+          },
+          "ubtan": {
+            title:"Tan Removal Ubtan", image:"https://images.unsplash.com/photo-1616845347271-9fc70cc8b919?w=400&q=80",
+            ingredients:["½ cup Besan","2 tbsp Yogurt","Juice of ½ Lemon","3–4 tbsp Milk"],
+            steps:["Mix into a thick paste.","Apply on body, leave 15 minutes.","Massage gently, then wash off."], freq:"Use 3 times/week"
+          },
+          "coffee": {
+            title:"Coffee Body Scrub", image:"https://images.unsplash.com/photo-1588693959146-2f096234b693?w=400&q=80",
+            ingredients:["2 tbsp Coffee","2 tbsp Sugar","1 tbsp Turmeric","2–3 tbsp Milk"],
+            steps:["Mix well.","Massage on wet skin for 2–3 minutes.","Wash off."], freq:"Use twice a week"
+          },
+          "hairmask": {
+            title:"Hair Mask", image:"https://images.unsplash.com/photo-1522337660859-02fbefca4702?w=400&q=80",
+            ingredients:["3 tbsp Yogurt","1 tbsp Honey","1 tbsp Olive Oil","1 tbsp Aloe Vera Gel"],
+            steps:["Mix until smooth.","Apply roots to ends, leave 30–40 min.","Wash with shampoo."], freq:"Use twice a week"
+          },
+          "lipscrub": {
+            title:"Lip Scrub", image:"https://images.unsplash.com/photo-1596755389378-c31d21fd1273?w=400&q=80",
+            ingredients:["1 tsp Vaseline","½ tsp Fine Sugar"],
+            steps:["Massage gently for 30–60 seconds.","Wipe clean, apply lip balm."], freq:"Use 2 times/week"
+          },
+          "lipmask": {
+            title:"Lip Brightening Mask", image:"https://images.unsplash.com/photo-1586521743604-0ee0618018dc?w=400&q=80",
+            ingredients:["½ tsp Honey","2–3 drops Aloe Vera Gel"],
+            steps:["Apply for 15–20 minutes.","Wipe off, apply lip balm."], freq:"Use 3 times/week"
+          },
+          "ice_green": { title:"Green Tea Ice Cube", image:"https://images.unsplash.com/photo-1555820585-c5ae44394b79?w=400&q=80", ingredients:["Brewed green tea"], steps:["Brew green tea, cool completely.","Freeze into cubes."], freq:"Reduces acne" },
+          "ice_rice": { title:"Rice Water Ice Cube", image:"https://images.unsplash.com/photo-1555820585-c5ae44394b79?w=400&q=80", ingredients:["Rice + water"], steps:["Wash rice twice, boil until overcooked.","Strain water, freeze into cubes."], freq:"Brightens skin" },
+          "ice_cucumber": { title:"Cucumber Ice Cube", image:"https://images.unsplash.com/photo-1555820585-c5ae44394b79?w=400&q=80", ingredients:["Cucumber"], steps:["Blend cucumber, strain juice.","Freeze."], freq:"Hydrates & refreshes" },
+          "ice_aloe": { title:"Aloe Vera Ice Cube", image:"https://images.unsplash.com/photo-1555820585-c5ae44394b79?w=400&q=80", ingredients:["Fresh aloe vera gel"], steps:["Blend if needed.","Freeze."], freq:"Soothes & hydrates" },
+          "ice_rose": { title:"Rose Water Ice Cube", image:"https://images.unsplash.com/photo-1555820585-c5ae44394b79?w=400&q=80", ingredients:["Rose water"], steps:["Pour rose water into ice tray.","Freeze."], freq:"Refreshes skin" },
+        };
+        
+        let openRecipes = new Set();
+        
+        function getTasksForDate(dateStr) {
+            const [y, m, d] = dateStr.split('-');
+            const dateObj = new Date(y, m - 1, d);
+            const dayName = DAYS[dateObj.getDay()];
+            const p = plan[dayName];
+            return {
+                morning: JSON.parse(JSON.stringify(p.morning)),
+                night: JSON.parse(JSON.stringify([...p.night, ...p.bath, ...p.hair])),
+                selfies: []
+            };
+        }
+
+        let state = {
+            streak: 0,
+            selfies: [],
+            times: { morning: '08:00', night: '21:00' },
+            history: {} // Format: "YYYY-MM-DD": { morning: [...], night: [...] }
+        };
+
+        const todayStr = new Date().toISOString().split('T')[0];
+        let currentViewDate = todayStr;
+
+        function loadState() {
+            const saved = localStorage.getItem('glowAdvancedStateV2');
+            if(saved) {
+                state = JSON.parse(saved);
+            }
+            // Ensure today exists in history
+            if(!state.history[todayStr]) {
+                // If it's a new day, check if yesterday was done for streak
+                const yesterday = new Date();
+                yesterday.setDate(yesterday.getDate() - 1);
+                const yStr = yesterday.toISOString().split('T')[0];
+                
+                if(state.history[yStr]) {
+                    const allDone = [...state.history[yStr].morning, ...state.history[yStr].night].every(t => t.done);
+                    if(!allDone) state.streak = 0; // Reset streak if missed yesterday
+                } else {
+                    state.streak = 0;
+                }
+                state.history[todayStr] = getTasksForDate(todayStr);
+            }
+        }
+        
+        function saveState() {
+            localStorage.setItem('glowAdvancedStateV2', JSON.stringify(state));
+        }
+
+        // Navigation
+        const navItems = document.querySelectorAll('.nav-item, .mobile-nav-item');
+        const views = document.querySelectorAll('.view-section');
+
+        navItems.forEach(item => {
+            item.addEventListener('click', () => {
+                const target = item.getAttribute('data-target');
+                navItems.forEach(nav => nav.classList.remove('active'));
+                document.querySelectorAll(`[data-target="${target}"]`).forEach(nav => nav.classList.add('active'));
+
+                views.forEach(view => {
+                    view.classList.remove('active');
+                    view.style.animation = 'none'; // reset animation
+                    view.offsetHeight; // trigger reflow
+                });
+                const activeView = document.getElementById(target);
+                activeView.classList.add('active');
+                activeView.style.animation = 'fadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
+
+                if(target === 'dashboard') renderCalendar();
+            });
+        });
+
+        const toastAudio = new Audio('https://assets.mixkit.co/active_storage/sfx/2866/2866-preview.mp3');
+
+        function playChimeSound(freq = 587.33) {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq, ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(freq * 1.5, ctx.currentTime + 0.2);
+                gain.gain.setValueAtTime(0.2, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.2);
+            } catch(e){}
+        }
+
+        // Toast Notification System
+        function showToast(message, type = 'info', title = '') {
+            toastAudio.currentTime = 0;
+            toastAudio.play().catch(() => playChimeSound(587.33));
+            
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast glass ${type}`;
+            
+            let icon = 'fa-heart';
+            if(type === 'success') icon = 'fa-check-circle';
+            
+            toast.innerHTML = `
+                <i class="fa-solid ${icon}"></i> 
+                <div class="toast-content">
+                    ${title ? `<h4>${title}</h4>` : ''}
+                    <p>${message}</p>
+                </div>
+            `;
+            
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 6000);
+        }
+
+        // Routine Rendering
+        function renderDates() {
+            const container = document.getElementById('date-strip');
+            container.innerHTML = '';
+            
+            // Show last 7 days
+            for(let i = 6; i >= 0; i--) {
+                const d = new Date();
+                d.setDate(d.getDate() - i);
+                const dStr = d.toISOString().split('T')[0];
+                const display = i === 0 ? 'Today' : d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' });
+                
+                const chip = document.createElement('div');
+                chip.className = `date-chip ${dStr === currentViewDate ? 'active' : ''}`;
+                chip.innerText = display;
+                
+                // Add cursor hover events manually for dynamically created elements
+                chip.addEventListener('mouseenter', () => {
+                    cursor.style.transform = 'translate(-50%, -50%) scale(1.5)';
+                    follower.style.transform = 'translate(-50%, -50%) scale(1.5)';
+                });
+                chip.addEventListener('mouseleave', () => {
+                    cursor.style.transform = 'translate(-50%, -50%) scale(1)';
+                    follower.style.transform = 'translate(-50%, -50%) scale(1)';
+                });
+
+                chip.onclick = () => {
+                    currentViewDate = dStr;
+                    if(!state.history[dStr]) {
+                        state.history[dStr] = getTasksForDate(dStr);
+                    }
+                    renderDates();
+                    renderRoutines();
+                };
+                container.appendChild(chip);
+            }
+        }
+
+        function renderRoutines() {
+            const mList = document.getElementById('morning-list');
+            const nList = document.getElementById('night-list');
+            mList.innerHTML = ''; nList.innerHTML = '';
+            
+            const isPast = currentViewDate !== todayStr;
+            const data = state.history[currentViewDate];
+
+            // Times
+            document.getElementById('morning-time').value = state.times.morning;
+            document.getElementById('night-time').value = state.times.night;
+            document.getElementById('morning-time').disabled = isPast;
+            document.getElementById('night-time').disabled = isPast;
+
+            const renderTasks = (tasks, container, type) => {
+                tasks.forEach((task, index) => {
+                    const card = document.createElement('div');
+                    card.className = 'task-card';
+                    card.style.flexDirection = 'column';
+                    card.style.alignItems = 'stretch';
+                    
+                    const hasRecipe = task.recipeKey && recipes[task.recipeKey];
+                    const isOpen = openRecipes.has(task.id);
+                    
+                    let html = `
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div class="task-info">
+                                <div class="task-checkbox ${task.done ? 'checked' : ''}" ${!isPast ? `onclick="toggleTask('${type}', ${index})"` : ''} style="${isPast ? 'cursor:default; opacity:0.7;' : ''}">
+                                    <i class="fa-solid fa-check"></i>
+                                </div>
+                                <div class="task-details">
+                                    <div style="display: flex; align-items: center;">
+                                        <h3 style="${task.done ? 'text-decoration: line-through; color: var(--text-muted);' : ''}">${task.name}</h3>
+                                        ${hasRecipe ? `<button class="btn-recipe" onclick="toggleRecipe('${task.id}')"><i class="fa-solid fa-info"></i></button>` : ''}
+                                    </div>
+                                    ${task.note ? `<p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">${task.note}</p>` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    if(hasRecipe) {
+                        const r = recipes[task.recipeKey];
+                        html += `
+                            <div class="recipe-details ${isOpen ? 'open' : ''}" id="recipe-${task.id}">
+                                <div class="recipe-inner">
+                                    <img src="${r.image}" class="recipe-img" alt="${r.title}">
+                                    <h4>${r.title}</h4>
+                                    <div>${r.ingredients.map(i => `<span class="ingredient-chip">${i}</span>`).join('')}</div>
+                                    <ol class="recipe-steps">
+                                        ${r.steps.map(s => `<li>${s}</li>`).join('')}
+                                    </ol>
+                                    <p style="color: var(--primary); font-size: 0.8rem; margin-top: 8px;"><i>${r.freq}</i></p>
+                                </div>
+                            </div>
+                        `;
+                    }
+                    
+                    card.innerHTML = html;
+                    
+                    // Attach cursor events
+                    const cb = card.querySelector('.task-checkbox');
+                    const rb = card.querySelector('.btn-recipe');
+                    if(!isPast && cb) {
+                        cb.addEventListener('mouseenter', () => cursor.style.transform = 'translate(-50%, -50%) scale(1.5)');
+                        cb.addEventListener('mouseleave', () => cursor.style.transform = 'translate(-50%, -50%) scale(1)');
+                    }
+                    if(rb) {
+                        rb.addEventListener('mouseenter', () => cursor.style.transform = 'translate(-50%, -50%) scale(1.5)');
+                        rb.addEventListener('mouseleave', () => cursor.style.transform = 'translate(-50%, -50%) scale(1)');
+                    }
+                    container.appendChild(card);
+                });
+            };
+
+            renderTasks(data.morning, mList, 'morning');
+            renderTasks(data.night, nList, 'night');
+            
+            updateStats();
+            saveState();
+        }
+
+        function toggleRecipe(id) {
+            if(openRecipes.has(id)) openRecipes.delete(id);
+            else openRecipes.add(id);
+            renderRoutines();
+        }
+
+        function toggleTask(type, index) {
+            const data = state.history[todayStr];
+            data[type][index].done = !data[type][index].done;
+            
+            if(data[type][index].done) {
+                // If just checked, maybe show quote
+                if(Math.random() > 0.6) {
+                    const quote = lovingQuotes[Math.floor(Math.random() * lovingQuotes.length)];
+                    showToast(quote, 'info', 'Hey Babe...');
+                }
+            }
+            
+            checkAllDone();
+            renderRoutines();
+        }
+
+        function markAll(type) {
+            if(currentViewDate !== todayStr) return;
+            const data = state.history[todayStr];
+            data[type].forEach(t => t.done = true);
+            showToast(`All ${type} tasks marked complete! You're amazing. 💕`, 'success');
+            checkAllDone();
+            renderRoutines();
+        }
+
+        function updateRoutineTime(type) {
+            const val = document.getElementById(`${type}-time`).value;
+            state.times[type] = val;
+            saveState();
+            showToast(`${type.charAt(0).toUpperCase() + type.slice(1)} routine time set to ${val}. I'll remind you! 😉`);
+            if (typeof syncToGoogleCalendar === 'function') syncToGoogleCalendar();
+        }
+
+        function checkAllDone() {
+            const data = state.history[todayStr];
+            const allMorning = data.morning.every(t => t.done);
+            const allNight = data.night.every(t => t.done);
+            
+            if(allMorning && allNight) {
+                state.streak++;
+                showToast(`Incredible! You crushed your routine today! Streak: ${state.streak} days 🔥`, 'success', 'Perfect Day!');
+            }
+        }
+
+        function getTotalCompleted() {
+            let total = 0;
+            for(let date in state.history) {
+                total += state.history[date].morning.filter(t => t.done).length;
+                total += state.history[date].night.filter(t => t.done).length;
+            }
+            return total;
+        }
+
+        function updateStats() {
+            document.getElementById('streak-val').innerText = state.streak;
+            document.getElementById('completed-val').innerText = getTotalCompleted();
+            let totalSelfies = 0;
+            for(let date in state.history) {
+                if(state.history[date].selfies) totalSelfies += state.history[date].selfies.length;
+            }
+            document.getElementById('selfies-val').innerText = totalSelfies;
+        }
+
+        // Glow Bot Interaction
+        function botSpeak() {
+            const msgEl = document.getElementById('bot-msg');
+            const quote = lovingQuotes[Math.floor(Math.random() * lovingQuotes.length)];
+            msgEl.innerText = quote;
+            msgEl.style.opacity = 1;
+            msgEl.style.transform = 'translateY(0) scale(1)';
+            
+            setTimeout(() => {
+                msgEl.style.opacity = 0;
+                msgEl.style.transform = 'translateY(10px) scale(0.9)';
+            }, 4000);
+        }
+
+        // Camera Logic
+        const video = document.getElementById('camera-feed');
+        const startBtn = document.getElementById('start-camera');
+        const snapBtn = document.getElementById('take-photo');
+        const canvas = document.getElementById('photo-canvas');
+        const gallery = document.getElementById('gallery');
+        let stream;
+
+        startBtn.addEventListener('click', async () => {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+                video.srcObject = stream;
+                startBtn.style.display = 'none';
+                snapBtn.style.display = 'inline-flex';
+            } catch (err) {
+                showToast("Camera access denied. Make sure permissions are granted.", 'info');
+            }
+        });
+
+        snapBtn.addEventListener('click', () => {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+            const imgData = canvas.toDataURL('image/jpeg');
+            
+            const timestamp = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            if(!state.history[todayStr].selfies) state.history[todayStr].selfies = [];
+            state.history[todayStr].selfies.push({ imgData, timestamp });
+            saveState();
+            renderGallery();
+            updateStats();
+            showToast("Selfie saved! Looking gorgeous! 😍", 'success');
+            
+            stream.getTracks().forEach(track => track.stop());
+            video.srcObject = null;
+            startBtn.style.display = 'inline-flex';
+            snapBtn.style.display = 'none';
+        });
+
+        function renderGallery() {
+            gallery.innerHTML = '';
+            if(!state.history[todayStr] || !state.history[todayStr].selfies) return;
+            state.history[todayStr].selfies.forEach(s => {
+                const div = document.createElement('div');
+                div.style.position = 'relative';
+                const img = document.createElement('img');
+                img.src = s.imgData;
+                div.appendChild(img);
+                const time = document.createElement('div');
+                time.innerText = s.timestamp;
+                time.style.position = 'absolute';
+                time.style.bottom = '5px';
+                time.style.right = '5px';
+                time.style.background = 'rgba(0,0,0,0.6)';
+                time.style.padding = '2px 6px';
+                time.style.borderRadius = '10px';
+                time.style.fontSize = '0.7rem';
+                div.appendChild(time);
+                gallery.appendChild(div);
+            });
+        }
+
+        // Calendar Logic
+        function renderCalendar() {
+            const grid = document.getElementById('calendar-grid');
+            if(!grid) return;
+            grid.innerHTML = '';
+            // Render last 14 days
+            for(let i=13; i>=0; i--) {
+                const d = new Date();
+                d.setDate(d.getDate() - i);
+                const dStr = d.toISOString().split('T')[0];
+                const dayDiv = document.createElement('div');
+                
+                // Base styles
+                dayDiv.style.background = 'rgba(255,255,255,0.05)';
+                dayDiv.style.border = '1px solid var(--glass-border)';
+                dayDiv.style.borderRadius = '12px';
+                dayDiv.style.padding = '12px 8px';
+                dayDiv.style.textAlign = 'center';
+                dayDiv.style.display = 'flex';
+                dayDiv.style.flexDirection = 'column';
+                dayDiv.style.alignItems = 'center';
+                dayDiv.style.gap = '6px';
+                dayDiv.style.transition = 'all 0.3s';
+                
+                let innerHTML = `<div style="font-size: 1.1rem; font-weight: 600;">${d.getDate()}</div><div style="font-size:0.75rem;color:var(--text-muted);">${d.toLocaleDateString('en-US',{weekday:'short'})}</div>`;
+                
+                // Present day styling
+                if (dStr === todayStr) {
+                    dayDiv.style.background = 'rgba(244, 114, 182, 0.15)';
+                    dayDiv.style.borderColor = 'var(--primary)';
+                    dayDiv.style.boxShadow = '0 4px 15px rgba(244, 114, 182, 0.2)';
+                }
+                
+                if(state.history[dStr]) {
+                    const data = state.history[dStr];
+                    const allTasks = [...data.morning, ...data.night];
+                    const totalTasks = allTasks.length;
+                    const completedTasks = allTasks.filter(t => t.done).length;
+                    
+                    // Logged data background (if any task done and not today)
+                    if (completedTasks > 0 && dStr !== todayStr) {
+                        dayDiv.style.background = 'rgba(56, 189, 248, 0.1)'; 
+                    }
+                    
+                    // Task stats
+                    if (totalTasks > 0) {
+                        const isAllDone = completedTasks === totalTasks;
+                        innerHTML += `<div style="font-size:0.75rem; font-weight: 500; background: ${isAllDone ? 'rgba(52, 211, 153, 0.2)' : 'rgba(255,255,255,0.1)'}; color: ${isAllDone ? 'var(--success)' : 'var(--text-main)'}; padding: 2px 6px; border-radius: 6px; width: 100%;">${completedTasks}/${totalTasks} <i class="fa-solid fa-check" style="font-size:0.6rem;"></i></div>`;
+                        
+                        if (isAllDone && dStr !== todayStr) {
+                            dayDiv.style.borderColor = 'var(--success)';
+                        }
+                    }
+
+                    // Selfies thumbnails
+                    if (data.selfies && data.selfies.length > 0) {
+                        innerHTML += `<div style="display:flex; gap:4px; justify-content:center; flex-wrap:wrap; margin-top: 4px;">`;
+                        data.selfies.slice(0, 3).forEach(s => { 
+                            innerHTML += `<img src="${s.imgData}" style="width:28px; height:28px; object-fit:cover; border-radius:6px; border: 1px solid var(--glass-border); box-shadow: 0 2px 5px rgba(0,0,0,0.3);">`;
+                        });
+                        if (data.selfies.length > 3) {
+                            innerHTML += `<div style="width:28px; height:28px; border-radius:6px; background: rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; font-size:0.7rem; border: 1px solid var(--glass-border);">+${data.selfies.length - 3}</div>`;
+                        }
+                        innerHTML += `</div>`;
+                    }
+
+                    dayDiv.onclick = () => openSummaryModal(dStr);
+                    dayDiv.style.cursor = 'pointer';
+                    
+                    dayDiv.addEventListener('mouseenter', () => {
+                        dayDiv.style.transform = 'translateY(-2px)';
+                    });
+                    dayDiv.addEventListener('mouseleave', () => {
+                        dayDiv.style.transform = 'translateY(0)';
+                    });
+                }
+                
+                dayDiv.innerHTML = innerHTML;
+                grid.appendChild(dayDiv);
+            }
+        }
+
+        function openSummaryModal(dateStr) {
+            document.getElementById('modal-date-title').innerText = dateStr;
+            const data = state.history[dateStr];
+            const allMorning = data.morning.every(t=>t.done);
+            const allNight = data.night.every(t=>t.done);
+            document.getElementById('modal-routine-status').innerHTML = `
+                Morning: ${allMorning ? '<i class="fa-solid fa-check" style="color:var(--success);"></i> Done' : 'Missed'}<br>
+                Night: ${allNight ? '<i class="fa-solid fa-check" style="color:var(--success);"></i> Done' : 'Missed'}
+            `;
+            const gal = document.getElementById('modal-selfies-gallery');
+            gal.innerHTML = '';
+            if(data.selfies && data.selfies.length > 0) {
+                data.selfies.forEach(s => {
+                    gal.innerHTML += `<div style="position:relative; min-width:120px;">
+                        <img src="${s.imgData}" style="width:120px; height:120px; object-fit:cover; border-radius:8px;">
+                        <div style="position:absolute; bottom:5px; right:5px; background:rgba(0,0,0,0.6); padding:2px 4px; border-radius:4px; font-size:0.7rem;">${s.timestamp}</div>
+                    </div>`;
+                });
+            } else {
+                gal.innerHTML = '<span style="color:var(--text-muted); font-size:0.9rem;">No selfies this day.</span>';
+            }
+            document.getElementById('summary-modal').style.display = 'flex';
+        }
+
+        // Real System Notifications & GCal Sync
+        let tokenClient;
+        let googleAccessToken = null;
+
+        async function syncToGoogleCalendar() {
+            if(!googleAccessToken) return;
+            
+            showToast("Syncing day-wise routines to Google Calendar...", "info");
+
+            const quotes = {
+                0: "Prep your skin for the week ahead. Rest & glow! 🌙",
+                1: "Glowing skin is a result of proper care, not luck! Start your week fresh. ✨",
+                2: "Invest in your skin. It is going to represent you for a long time. 💖",
+                3: "Beauty is about being comfortable in your own skin. Mid-week glow up! 🌿",
+                4: "Self-care isn't selfish, it's essential. Keep up the streak! 🌸",
+                5: "Weekend is near! Give your skin the love and glow it deserves. ✨",
+                6: "Relax, refresh, recharge. Saturday skincare pampering time! 🛀"
+            };
+
+            const createSpecificDayEvent = async (targetDate, summary, quote, timeStr, tasks, colorId) => {
+                if (!timeStr) return;
+                const parts = timeStr.split(':');
+                const eventDate = new Date(targetDate);
+                eventDate.setHours(parseInt(parts[0], 10), parseInt(parts[1], 10), 0, 0);
+                
+                const startTime = eventDate.toISOString();
+                const end = new Date(eventDate.getTime() + 30 * 60000);
+                const endTime = end.toISOString();
+
+                const taskListStr = tasks && tasks.length > 0 
+                    ? tasks.map(t => "• " + (typeof t === 'string' ? t : t.name)).join("\n") 
+                    : "• Complete your skincare steps!";
+
+                const event = {
+                    summary: summary,
+                    description: `💬 Quote of the Day: "${quote}"\n\n📋 Skincare Routine Steps:\n${taskListStr}\n\n✨ Track & Checkoff in Glow App: ${window.location.origin}/skincare.html`,
+                    start: { dateTime: startTime, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone },
+                    end: { dateTime: endTime, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone },
+                    reminders: {
+                        useDefault: false,
+                        overrides: [
+                            { method: 'popup', minutes: 0 },
+                            { method: 'popup', minutes: 15 }
+                        ]
+                    },
+                    colorId: colorId 
+                };
+
+                try {
+                    await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': 'Bearer ' + googleAccessToken,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(event)
+                    });
+                } catch(e) { console.error(e); }
+            };
+
+            // Cleanup old events
+            try {
+                const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?q=Glow%20-%20`, {
+                    headers: { 'Authorization': 'Bearer ' + googleAccessToken }
+                });
+                const data = await res.json();
+                if(data.items) {
+                    for(let item of data.items) {
+                        if(item.summary && item.summary.includes('Glow - ')) {
+                            await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${item.id}`, {
+                                method: 'DELETE',
+                                headers: { 'Authorization': 'Bearer ' + googleAccessToken }
+                            });
+                        }
+                    }
+                }
+            } catch(e) { console.error(e); }
+
+            // Create day-wise events for the upcoming 7 days
+            for(let i = 0; i < 7; i++) {
+                const d = new Date();
+                d.setDate(d.getDate() + i);
+                const dayOfWeek = d.getDay();
+                const dStr = d.toISOString().split('T')[0];
+                const dayQuote = quotes[dayOfWeek];
+                
+                const dayData = (state.history && state.history[dStr]) ? state.history[dStr] : getInitialDayData(dStr);
+                const morningTasks = dayData.morning;
+                const nightTasks = dayData.night;
+                const dayName = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+                
+                await createSpecificDayEvent(d, `Glow - Morning Routine (${dayName}) ✨`, dayQuote, state.times.morning, morningTasks, "4");
+                await createSpecificDayEvent(d, `Glow - Night Routine (${dayName}) 🌙`, dayQuote, state.times.night, nightTasks, "3");
+            }
+
+            showToast("Day-wise Google Calendar Sync Complete with Quotes! 📅✨", "success");
+        }
+
+        window.addEventListener('load', function () {
+            try {
+                tokenClient = google.accounts.oauth2.initTokenClient({
+                    client_id: '990352693904-5fd2efdcalkqjadffc020lhc4hh60eck.apps.googleusercontent.com',
+                    scope: 'https://www.googleapis.com/auth/calendar.events',
+                    callback: (tokenResponse) => {
+                        if(tokenResponse && tokenResponse.access_token) {
+                            googleAccessToken = tokenResponse.access_token;
+                            showToast("Google Calendar Connected Successfully! ✨", "success");
+                            document.getElementById('sync-cal-btn').innerHTML = '<i class="fa-solid fa-check"></i> Connected';
+                            document.getElementById('sync-cal-btn').classList.remove('btn-outline');
+                            document.getElementById('sync-cal-btn').style.pointerEvents = 'none';
+                            syncToGoogleCalendar();
+                        }
+                    }
+                });
+            } catch(e) {}
+            
+            // Always start the timer for the in-app alarm modal
+            startNotificationTimer();
+        });
+
+        function requestNotificationPermission() {
+            if ("Notification" in window) {
+                Notification.requestPermission().then(permission => {
+                    if (permission === "granted") {
+                        showToast("System Notifications Enabled!", "success");
+                        startNotificationTimer();
+                    }
+                });
+            }
+        }
+        
+        let notifTimer = null;
+        let snoozedUntil = null;
+        const alarmAudio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+        alarmAudio.loop = true;
+
+        let alarmIntervalSound = null;
+
+        function triggerAlarm(title, desc) {
+            document.getElementById('alarm-title').innerText = title;
+            document.getElementById('alarm-desc').innerText = desc;
+            document.getElementById('alarm-modal').style.display = 'flex';
+            
+            alarmAudio.play().catch(e => {
+                if(alarmIntervalSound) clearInterval(alarmIntervalSound);
+                alarmIntervalSound = setInterval(() => playChimeSound(660), 500);
+            });
+        }
+
+        function turnOffAlarm() {
+            document.getElementById('alarm-modal').style.display = 'none';
+            alarmAudio.pause();
+            alarmAudio.currentTime = 0;
+            if(alarmIntervalSound) {
+                clearInterval(alarmIntervalSound);
+                alarmIntervalSound = null;
+            }
+            snoozedUntil = null;
+        }
+
+        function snoozeAlarm() {
+            turnOffAlarm();
+            const now = new Date();
+            snoozedUntil = new Date(now.getTime() + 5 * 60000); // 5 mins
+            showToast("Alarm snoozed for 5 minutes", "info");
+        }
+
+        function checkAlarmTime(timeStr, now) {
+            if (!timeStr) return false;
+            const parts = timeStr.split(':');
+            if (parts.length !== 2) return false;
+            return now.getHours() === parseInt(parts[0], 10) && 
+                   now.getMinutes() === parseInt(parts[1], 10) && 
+                   now.getSeconds() === 0;
+        }
+
+        let workerTimer = null;
+        function startNotificationTimer() {
+            if(workerTimer) workerTimer.terminate();
+            
+            // Inline Web Worker to bypass browser tab throttling
+            const workerCode = `
+                let interval;
+                self.onmessage = function(e) {
+                    if (e.data === 'start') {
+                        interval = setInterval(() => self.postMessage('tick'), 1000);
+                    }
+                };
+            `;
+            const blob = new Blob([workerCode], {type: 'application/javascript'});
+            workerTimer = new Worker(URL.createObjectURL(blob));
+            
+            workerTimer.onmessage = function() {
+                const now = new Date();
+                
+                if(checkAlarmTime(state.times.morning, now)) {
+                    triggerAlarm("Morning Routine", "Time to shine! It's your morning skincare time. ✨");
+                    if("Notification" in window && Notification.permission === "granted") {
+                        new Notification("Glow - Morning Routine", { body: "Time to shine! It's your morning skincare time. ✨" });
+                    }
+                }
+                if(checkAlarmTime(state.times.night, now)) {
+                    triggerAlarm("Night Routine", "Time to unwind and pamper your skin! 🌙");
+                    if("Notification" in window && Notification.permission === "granted") {
+                        new Notification("Glow - Night Routine", { body: "Time to unwind and pamper your skin! 🌙" });
+                    }
+                }
+
+                if(snoozedUntil && now >= snoozedUntil) {
+                    snoozedUntil = null;
+                    triggerAlarm("Snooze Over!", "Time for your skincare routine. No more snoozing! ✨");
+                }
+            };
+            
+            workerTimer.postMessage('start');
+        }
+
+        function authenticateGoogle() {
+            if (window.location.protocol === 'file:') {
+                showToast("Google Sync failed! You cannot use file:// to connect to Google. Please run this app using a local web server (e.g. localhost) 🚫", "error");
+                return;
+            }
+            if(tokenClient) {
+                tokenClient.requestAccessToken();
+            } else {
+                showToast("Google client failed to load. Check your internet or adblocker.", "error");
+            }
+            requestNotificationPermission();
+        }
+
+        // Init
+        loadState();
+        renderDates();
+        renderRoutines();
+        renderGallery();
+        renderCalendar();
+
+        // Random flirty toast on load
+        setTimeout(() => {
+            botSpeak();
+        }, 2000);
+
+    </script>
+</body>
+</html>
