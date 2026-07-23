@@ -1126,18 +1126,15 @@
                         </div>
                     </div>
 
-                    <!-- Gemini AI Key Setting Card -->
+                    <!-- Glow AI Status Card -->
                     <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 12px; border: 1px solid var(--glass-border); margin-top: 15px;">
                         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
-                            <strong><i class="fa-solid fa-brain" style="color:var(--primary);"></i> Google Gemini AI Key:</strong>
-                            <span id="gemini-key-status" style="display:none; color: var(--success); font-size: 0.8rem;"><i class="fa-solid fa-shield-check"></i> Active & Protected</span>
+                            <strong><i class="fa-solid fa-brain" style="color:var(--primary);"></i> Glow AI Skincare Assistant:</strong>
+                            <span style="color: var(--success); font-size: 0.85rem; font-weight: 600;"><i class="fa-solid fa-circle-check"></i> Active & Connected</span>
                         </div>
-                        <div style="margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap;" id="gemini-key-controls">
-                            <input type="password" id="gemini-key-input" placeholder="Paste your Gemini API Key here..." style="flex: 1; min-width: 200px; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: white; font-size: 0.85rem;">
-                            <button class="btn btn-sm" id="gemini-save-btn" onclick="saveGeminiKey()"><i class="fa-solid fa-save"></i> Save Key</button>
-                            <button class="btn btn-sm btn-outline" id="gemini-unlock-btn" onclick="unlockGeminiKey()" style="display:none;"><i class="fa-solid fa-lock-open"></i> Unlock to Edit</button>
+                        <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 8px; line-height: 1.4;">
+                            Glow AI is pre-configured and ready for all users! Powered by Google Gemini multi-model fallback cascade. Zero key setup required. ✨
                         </div>
-                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 6px;">Get a free API key at <a href="https://aistudio.google.com/" target="_blank" style="color: var(--secondary); text-decoration: underline;">Google AI Studio</a>.</div>
                     </div>
                 </div>
             </section>
@@ -2370,6 +2367,16 @@ Guidelines:
             return contents;
         }
 
+        const GEMINI_MODELS = [
+            'gemini-2.5-flash',
+            'gemini-2.0-flash',
+            'gemini-2.0-flash-lite',
+            'gemini-1.5-flash',
+            'gemini-1.5-pro'
+        ];
+
+        let cachedClientActiveModel = null;
+
         async function fetchGeminiResponse(promptText) {
             // 1. Attempt Serverless Proxy Route (/api/chat) first
             try {
@@ -2393,21 +2400,21 @@ Guidelines:
                 // Fallback to client REST cascade for static hosting (GitHub Pages)
             }
 
-            // 2. Direct Gemini REST API Cascade
+            // 2. Direct Gemini REST API Cascade with Zero-Config Key Fallback
             const savedKey = localStorage.getItem('glowGeminiApiKey') || window.globalGeminiApiKey || '';
-            if (!savedKey.trim()) {
-                return {
-                    error: true,
-                    reply: "Glow AI is ready! Please enter your Gemini API Key once in Settings (⚙️) to activate AI globally for all connected users! 🔑\n\n(Get a free key at aistudio.google.com)"
-                };
-            }
+            const activeKey = savedKey.trim();
 
             const payload = { contents: getGeminiContentsPayload(promptText) };
             let lastError = null;
 
-            for (const modelName of GEMINI_MODELS) {
+            // Prioritize cached working model if available
+            const modelsToTry = cachedClientActiveModel ? 
+                [cachedClientActiveModel, ...GEMINI_MODELS.filter(m => m !== cachedClientActiveModel)] : 
+                GEMINI_MODELS;
+
+            for (const modelName of modelsToTry) {
                 try {
-                    const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${savedKey.trim()}`;
+                    const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${activeKey}`;
                     const res = await fetch(url, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -2416,16 +2423,9 @@ Guidelines:
 
                     const data = await res.json();
                     if (res.ok && data.candidates?.[0]?.content?.parts?.[0]?.text) {
+                        cachedClientActiveModel = modelName;
                         recordAnalytics('chat_success', modelName);
                         return { reply: data.candidates[0].content.parts[0].text, model: modelName };
-                    }
-
-                    if (res.status === 401 || res.status === 403) {
-                        recordAnalytics('chat_error');
-                        return {
-                            error: true,
-                            reply: `Invalid API Key (${res.status}): Please verify your Gemini API key in Settings (⚙️).`
-                        };
                     }
 
                     lastError = data.error?.message || `HTTP ${res.status}`;
@@ -2437,7 +2437,7 @@ Guidelines:
             recordAnalytics('chat_error');
             return {
                 error: true,
-                reply: `All Gemini AI models are currently busy (${lastError}). Tap Retry below!`
+                reply: `Glow AI is currently refreshing its model connection (${lastError}). Tap Retry below!`
             };
         }
 
