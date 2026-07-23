@@ -535,17 +535,19 @@
         /* Floating Bot Component */
         .bot-container {
             position: fixed;
-            bottom: clamp(75px, 10vh, 90px);
+            bottom: clamp(70px, 11vh, 90px);
             left: clamp(12px, 3vw, 24px);
-            z-index: 999;
+            z-index: 99999;
             display: flex;
             align-items: flex-end;
             gap: 10px;
+            cursor: pointer !important;
+            touch-action: manipulation;
         }
 
         .bot-icon {
-            width: clamp(46px, 10vw, 56px);
-            height: clamp(46px, 10vw, 56px);
+            width: clamp(48px, 11vw, 58px);
+            height: clamp(48px, 11vw, 58px);
             border-radius: 50%;
             background: linear-gradient(135deg, var(--secondary), var(--primary));
             display: flex;
@@ -553,10 +555,11 @@
             justify-content: center;
             font-size: var(--font-h3);
             color: white;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.5), 0 0 15px rgba(244, 114, 182, 0.4);
             animation: float 3s ease-in-out infinite;
             position: relative;
-            cursor: pointer;
+            cursor: pointer !important;
+            flex-shrink: 0;
         }
         
         .bot-icon::after {
@@ -567,6 +570,7 @@
             border-radius: 50%;
             border: 2px solid var(--primary);
             animation: pulse 2s infinite;
+            pointer-events: none;
         }
 
         .bot-bubble {
@@ -578,10 +582,11 @@
             border-bottom-left-radius: 0;
             max-width: clamp(180px, 45vw, 240px);
             font-size: var(--font-xs);
-            opacity: 0;
-            transform: translateY(10px) scale(0.9);
+            opacity: 1; /* Always visible on mobile for high engagement */
+            transform: translateY(0) scale(1);
             transition: var(--transition-smooth);
             pointer-events: none;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
         }
 
         /* Notification Toast Container */
@@ -940,7 +945,7 @@
             <span>Settings</span>
         </div>
     <!-- Gemini AI Skincare Assistant Modal -->
-    <div id="ai-chat-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(8px); z-index: 10000; align-items: center; justify-content: center; padding: 15px;">
+    <div id="ai-chat-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); z-index: 999999; align-items: center; justify-content: center; padding: 15px;">
         <div class="glass" style="width: 100%; max-width: 480px; max-height: 85vh; display: flex; flex-direction: column; overflow: hidden; border-radius: 20px;">
             <!-- Modal Header -->
             <div style="padding: 14px 18px; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.2);">
@@ -1181,6 +1186,13 @@
                 if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
                 db = firebase.firestore();
                 auth = firebase.auth();
+
+                // Global Gemini API Key Firestore Listener
+                db.collection('config').doc('gemini').onSnapshot(doc => {
+                    if (doc.exists && doc.data().apiKey) {
+                        window.globalGeminiApiKey = doc.data().apiKey;
+                    }
+                }, err => console.log("Global config notice:", err));
                 
                 let cloudUnsubscribe = null;
                 auth.onAuthStateChanged(user => {
@@ -1958,7 +1970,17 @@
             const val = document.getElementById('gemini-key-input').value.trim();
             if (val) {
                 localStorage.setItem('glowGeminiApiKey', val);
-                showToast("Gemini AI API Key saved securely! 🤖✨", "success");
+                window.globalGeminiApiKey = val;
+                if (db) {
+                    db.collection('config').doc('gemini').set({ apiKey: val }, { merge: true })
+                      .then(() => showToast("Global Gemini AI Key saved for ALL users! 🤖✨", "success"))
+                      .catch(e => {
+                          console.error("Firestore config save error:", e);
+                          showToast("Gemini AI API Key saved locally! 🤖✨", "success");
+                      });
+                } else {
+                    showToast("Gemini AI API Key saved locally! 🤖✨", "success");
+                }
             } else {
                 showToast("Please enter a valid API Key.", "info");
             }
@@ -1966,7 +1988,7 @@
 
         function openAiChatModal() {
             document.getElementById('ai-chat-modal').style.display = 'flex';
-            const savedKey = localStorage.getItem('glowGeminiApiKey');
+            const savedKey = localStorage.getItem('glowGeminiApiKey') || window.globalGeminiApiKey || '';
             if (savedKey) {
                 document.getElementById('gemini-key-input').value = savedKey;
             }
@@ -1977,9 +1999,9 @@
         }
 
         async function fetchGeminiResponse(promptText) {
-            const savedKey = localStorage.getItem('glowGeminiApiKey') || '';
+            const savedKey = localStorage.getItem('glowGeminiApiKey') || window.globalGeminiApiKey || '';
             if (!savedKey.trim()) {
-                return "Please enter your Gemini API Key in Settings (⚙️) to get real-time AI skincare answers! 🔑\n\n(Get a free API key at aistudio.google.com)";
+                return "Glow AI is ready! Please enter your Gemini API Key once in Settings (⚙️) to activate AI globally for all connected users! 🔑\n\n(Get a free key at aistudio.google.com)";
             }
 
             const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${savedKey.trim()}`;
