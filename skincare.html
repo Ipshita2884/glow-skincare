@@ -2516,14 +2516,25 @@ Guidelines:
         }
 
         async function fetchOllamaResponse(promptText) {
-            const ollamaUrl = localStorage.getItem('glowOllamaUrl') || 'http://localhost:11434';
+            const savedOllamaUrl = localStorage.getItem('glowOllamaUrl');
+            const isLocalHostDomain = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+            
+            // On mobile/remote domain, skip default localhost Ollama unless custom remote URL was saved
+            if (!isLocalHostDomain && !savedOllamaUrl) {
+                return null;
+            }
+
+            const ollamaUrl = savedOllamaUrl || 'http://localhost:11434';
             const userModel = localStorage.getItem('glowOllamaModel') || 'phi3';
             
-            const modelsToTry = [userModel, 'phi3', 'phi3:latest', 'llava', 'llava:latest', 'llama3'];
+            const modelsToTry = [userModel, 'phi3', 'llava'];
             const uniqueModels = [...new Set(modelsToTry)];
 
             for (const m of uniqueModels) {
                 try {
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 1200);
+
                     const res = await fetch(`${ollamaUrl}/api/generate`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -2531,8 +2542,11 @@ Guidelines:
                             model: m,
                             prompt: `${GEMINI_SYSTEM_PROMPT}\n\nUser Question: ${promptText}`,
                             stream: false
-                        })
+                        }),
+                        signal: controller.signal
                     });
+                    clearTimeout(timeoutId);
+
                     if (res.ok) {
                         const data = await res.json();
                         if (data.response) {
@@ -2591,18 +2605,22 @@ Guidelines:
                 const validGeminiModels = [
                     'gemini-1.5-flash',
                     'gemini-2.0-flash-exp',
-                    'gemini-1.5-pro',
-                    'gemini-1.5-flash-8b'
+                    'gemini-1.5-pro'
                 ];
 
                 for (const modelName of validGeminiModels) {
                     try {
+                        const controller = new AbortController();
+                        const timeoutId = setTimeout(() => controller.abort(), 3000);
+
                         const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${activeKey}`;
                         const res = await fetch(url, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(payload)
+                            body: JSON.stringify(payload),
+                            signal: controller.signal
                         });
+                        clearTimeout(timeoutId);
 
                         const data = await res.json();
                         if (res.ok && data.candidates?.[0]?.content?.parts?.[0]?.text) {
@@ -2614,18 +2632,18 @@ Guidelines:
                 }
             }
 
-            // 2. Try Local / Remote Ollama AI Server (phi3 / llama3)
-            const ollamaRes = await fetchOllamaResponse(promptText);
-            if (ollamaRes) {
-                recordAnalytics('chat_success', ollamaRes.model);
-                return ollamaRes;
-            }
-
-            // 3. High-Speed Cloud AI Engine (Works on Mobile + Web globally for ALL users 24/7 with 0 key setup)
+            // 2. High-Speed Cloud AI Engine (Responds in <1s on mobile & desktop everywhere)
             const pollinationsRes = await fetchPollinationsAiResponse(promptText);
             if (pollinationsRes) {
                 recordAnalytics('chat_success', pollinationsRes.model);
                 return pollinationsRes;
+            }
+
+            // 3. Local / Remote Ollama AI Integration (with 1.2s timeout guard)
+            const ollamaRes = await fetchOllamaResponse(promptText);
+            if (ollamaRes) {
+                recordAnalytics('chat_success', ollamaRes.model);
+                return ollamaRes;
             }
 
             recordAnalytics('chat_error');
