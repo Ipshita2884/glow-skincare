@@ -2500,16 +2500,26 @@ Guidelines:
 
         async function fetchPollinationsAiResponse(promptText) {
             try {
-                const fullPrompt = `${GEMINI_SYSTEM_PROMPT}\n\nUser Skincare Question: ${promptText}`;
-                const url = `https://text.pollinations.ai/${encodeURIComponent(fullPrompt)}?model=openai`;
-                const res = await fetch(url);
+                const res = await fetch('https://text.pollinations.ai/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        messages: [
+                            { role: 'system', content: GEMINI_SYSTEM_PROMPT },
+                            { role: 'user', content: promptText }
+                        ],
+                        model: 'openai'
+                    })
+                });
                 if (res.ok) {
                     const text = await res.text();
-                    if (text && text.trim().length > 5) {
+                    if (text && text.trim().length > 2) {
                         return { reply: text.trim(), model: 'pollinations-free-ai' };
                     }
                 }
-            } catch(e) {}
+            } catch(e) {
+                console.error("Pollinations error:", e);
+            }
             return null;
         }
 
@@ -2534,40 +2544,11 @@ Guidelines:
                 }
             } catch(e) {}
 
-            // 2. Direct Gemini REST API Cascade with official v1beta endpoints
-            const savedKey = localStorage.getItem('glowGeminiApiKey') || window.globalGeminiApiKey || '';
-            const activeKey = savedKey.trim();
-
-            const payload = { contents: getGeminiContentsPayload(promptText) };
-
-            const validGeminiModels = [
-                'gemini-2.0-flash-exp',
-                'gemini-1.5-flash-latest',
-                'gemini-1.5-pro-latest',
-                'gemini-1.5-flash',
-                'gemini-1.5-pro'
-            ];
-
-            const modelsToTry = cachedClientActiveModel ? 
-                [cachedClientActiveModel, ...validGeminiModels.filter(m => m !== cachedClientActiveModel)] : 
-                validGeminiModels;
-
-            for (const modelName of modelsToTry) {
-                try {
-                    const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${activeKey}`;
-                    const res = await fetch(url, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-
-                    const data = await res.json();
-                    if (res.ok && data.candidates?.[0]?.content?.parts?.[0]?.text) {
-                        cachedClientActiveModel = modelName;
-                        recordAnalytics('chat_success', modelName);
-                        return { reply: data.candidates[0].content.parts[0].text, model: modelName };
-                    }
-                } catch(e) {}
+            // 2. Pollinations Free Open AI (Instant response, 0 API keys required, 100% 24/7 uptime)
+            const pollinationsRes = await fetchPollinationsAiResponse(promptText);
+            if (pollinationsRes) {
+                recordAnalytics('chat_success', pollinationsRes.model);
+                return pollinationsRes;
             }
 
             // 3. Local / Remote Ollama AI Integration
@@ -2577,17 +2558,43 @@ Guidelines:
                 return ollamaRes;
             }
 
-            // 4. Zero-Fail Fallback: Pollinations Free Open AI (Always succeeds 24/7, 0 rate-limits, 0 keys)
-            const pollinationsRes = await fetchPollinationsAiResponse(promptText);
-            if (pollinationsRes) {
-                recordAnalytics('chat_success', pollinationsRes.model);
-                return pollinationsRes;
+            // 4. Direct Gemini REST API Cascade (if key saved)
+            const savedKey = localStorage.getItem('glowGeminiApiKey') || window.globalGeminiApiKey || '';
+            const activeKey = savedKey.trim();
+
+            if (activeKey) {
+                const payload = { contents: getGeminiContentsPayload(promptText) };
+                const validGeminiModels = [
+                    'gemini-2.0-flash-exp',
+                    'gemini-1.5-flash-latest',
+                    'gemini-1.5-pro-latest',
+                    'gemini-1.5-flash',
+                    'gemini-1.5-pro'
+                ];
+
+                for (const modelName of validGeminiModels) {
+                    try {
+                        const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${activeKey}`;
+                        const res = await fetch(url, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+
+                        const data = await res.json();
+                        if (res.ok && data.candidates?.[0]?.content?.parts?.[0]?.text) {
+                            cachedClientActiveModel = modelName;
+                            recordAnalytics('chat_success', modelName);
+                            return { reply: data.candidates[0].content.parts[0].text, model: modelName };
+                        }
+                    } catch(e) {}
+                }
             }
 
             recordAnalytics('chat_error');
             return {
                 error: true,
-                reply: `Glow AI is currently refreshing. Tap Retry below!`
+                reply: `Glow AI is currently refreshing. Please try sending your message again! ✨`
             };
         }
 
