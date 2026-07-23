@@ -721,6 +721,10 @@
             }
         }
     </style>
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
@@ -1089,8 +1093,60 @@
             }
         }
         
+        let db = null;
+        let auth = null;
+        let currentUserEmail = null;
+
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyA5ER4OGeIPPWDfrO4Zbip7r1DgGuFf2w8",
+            authDomain: "glow-skincare-d238d.firebaseapp.com",
+            projectId: "glow-skincare-d238d",
+            storageBucket: "glow-skincare-d238d.firebasestorage.app",
+            messagingSenderId: "313132341415",
+            appId: "1:313132341415:web:eaf90f9959556cf751a382",
+            measurementId: "G-8LD6PD2KQE"
+        };
+
+        try {
+            if (typeof firebase !== 'undefined') {
+                if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+                db = firebase.firestore();
+                auth = firebase.auth();
+                
+                auth.onAuthStateChanged(user => {
+                    if (user) {
+                        currentUserEmail = user.email;
+                        showToast(`Connected as ${user.email} ☁️`, 'success');
+                        const btn = document.getElementById('sync-cal-btn');
+                        if (btn) btn.innerHTML = `<i class="fa-solid fa-cloud-check"></i> ${user.email.split('@')[0]}`;
+                        
+                        db.collection('users').doc(currentUserEmail).get().then(doc => {
+                            if (doc.exists && doc.data().state) {
+                                state = doc.data().state;
+                                localStorage.setItem('glowAdvancedStateV2', JSON.stringify(state));
+                                renderRoutines();
+                                renderCalendar();
+                                renderGallery();
+                            }
+                        }).catch(e => console.error("Cloud load error:", e));
+                    }
+                });
+            }
+        } catch(e) { console.log("Firebase init notice:", e); }
+
         function saveState() {
             localStorage.setItem('glowAdvancedStateV2', JSON.stringify(state));
+            
+            if (db && currentUserEmail) {
+                db.collection('users').doc(currentUserEmail).set({
+                    email: currentUserEmail,
+                    lastActive: firebase.firestore.FieldValue.serverTimestamp(),
+                    streak: state.streak || 0,
+                    times: state.times,
+                    history: state.history
+                }, { merge: true }).catch(err => console.error("Cloud sync error:", err));
+            }
         }
 
         // Navigation
@@ -1752,7 +1808,22 @@
                 showToast("Google Sync failed! You cannot use file:// to connect to Google. Please run this app using a local web server (e.g. localhost) 🚫", "error");
                 return;
             }
-            if(tokenClient) {
+            
+            if (auth) {
+                const provider = new firebase.auth.GoogleAuthProvider();
+                provider.addScope('https://www.googleapis.com/auth/calendar.events');
+                auth.signInWithPopup(provider).then(result => {
+                    const user = result.user;
+                    currentUserEmail = user.email;
+                    if (result.credential && result.credential.accessToken) {
+                        googleAccessToken = result.credential.accessToken;
+                        if (typeof syncToGoogleCalendar === 'function') syncToGoogleCalendar();
+                    }
+                }).catch(err => {
+                    console.log("Firebase auth fallback to tokenClient:", err);
+                    if(tokenClient) tokenClient.requestAccessToken();
+                });
+            } else if(tokenClient) {
                 tokenClient.requestAccessToken();
             } else {
                 showToast("Google client failed to load. Check your internet or adblocker.", "error");
