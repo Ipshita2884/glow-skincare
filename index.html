@@ -751,7 +751,7 @@
     <div id="custom-cursor-follower"></div>
 
     <!-- Floating Bot -->
-    <div class="bot-container" onclick="openAiChatModal()">
+    <div class="bot-container" onclick="openAiChatView()">
         <div class="bot-icon">
             <i class="fa-solid fa-robot"></i>
         </div>
@@ -772,6 +772,9 @@
                 </div>
                 <div class="nav-item" data-target="routines">
                     <i class="fa-solid fa-calendar-day"></i> Routines
+                </div>
+                <div class="nav-item" data-target="aichat">
+                    <i class="fa-solid fa-robot"></i> Glow AI
                 </div>
                 <div class="nav-item" data-target="camera">
                     <i class="fa-solid fa-camera"></i> Selfies
@@ -942,6 +945,10 @@
             <i class="fa-solid fa-calendar-day"></i>
             <span>Routine</span>
         </div>
+        <div class="mobile-nav-item" data-target="aichat">
+            <i class="fa-solid fa-robot"></i>
+            <span>Glow AI</span>
+        </div>
         <div class="mobile-nav-item" data-target="camera">
             <i class="fa-solid fa-camera"></i>
             <span>Selfies</span>
@@ -950,46 +957,46 @@
             <i class="fa-solid fa-gear"></i>
             <span>Settings</span>
         </div>
-    <!-- Gemini AI Skincare Assistant Modal -->
-    <div id="ai-chat-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); z-index: 999999; align-items: center; justify-content: center; padding: 15px;" role="dialog" aria-modal="true" aria-labelledby="ai-modal-title">
-        <div class="glass" style="width: 100%; max-width: 500px; height: 85vh; max-height: 600px; display: flex; flex-direction: column; overflow: hidden; border-radius: 20px; box-shadow: var(--shadow-luxury);">
-            <!-- Modal Header -->
-            <div style="padding: 14px 18px; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.25);">
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <div style="width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, var(--secondary), var(--primary)); display: flex; align-items: center; justify-content: center; font-size: 1.1rem; color: white;">
-                        <i class="fa-solid fa-robot"></i>
+            <!-- Dedicated Full-Page AI Chat View -->
+            <section id="aichat" class="view-section">
+                <div class="glass" style="display: flex; flex-direction: column; height: calc(100vh - 140px); min-height: 520px; overflow: hidden; border-radius: var(--radius-lg); box-shadow: var(--shadow-luxury);">
+                    
+                    <!-- View Header -->
+                    <div style="padding: var(--space-sm) var(--space-md); border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.25); flex-wrap: wrap; gap: 10px;">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div style="width: 42px; height: 42px; border-radius: 50%; background: linear-gradient(135deg, var(--secondary), var(--primary)); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: white; box-shadow: 0 4px 12px rgba(244, 114, 182, 0.4);">
+                                <i class="fa-solid fa-robot"></i>
+                            </div>
+                            <div>
+                                <h2 style="font-size: var(--font-h3); margin: 0; font-weight: 700; background: linear-gradient(to right, var(--text-main), var(--primary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Glow AI Assistant</h2>
+                                <span style="font-size: var(--font-xs); color: var(--secondary);"><i class="fa-solid fa-sparkles"></i> AI Skincare Consultant • Powered by Gemini</span>
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <button onclick="clearAiChatHistory()" class="btn btn-sm btn-outline" style="border-radius: var(--radius-sm);" title="Clear Conversation"><i class="fa-solid fa-trash-can"></i> Clear Chat</button>
+                        </div>
                     </div>
-                    <div>
-                        <h3 id="ai-modal-title" style="font-size: 1.05rem; margin: 0; font-weight: 600;">Glow AI Assistant</h3>
-                        <span style="font-size: 0.7rem; color: var(--secondary);"><i class="fa-solid fa-sparkles"></i> Powered by Google Gemini</span>
+
+                    <!-- Quick Prompt Chips Banner -->
+                    <div style="padding: 10px var(--space-md); border-bottom: 1px solid rgba(255,255,255,0.06); display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; background: rgba(0,0,0,0.15);" role="region" aria-label="Quick Skincare Prompts">
+                        <button class="btn btn-sm btn-outline" style="font-size: var(--font-xs); border-radius: var(--radius-full); white-space: nowrap;" onclick="askQuickAi('Give me 3 daily skincare tips for glowing skin!')">✨ Glowing Tips</button>
+                        <button class="btn btn-sm btn-outline" style="font-size: var(--font-xs); border-radius: var(--radius-full); white-space: nowrap;" onclick="askQuickAi('What is the best routine for oily skin?')">🌿 Oily Skin Routine</button>
+                        <button class="btn btn-sm btn-outline" style="font-size: var(--font-xs); border-radius: var(--radius-full); white-space: nowrap;" onclick="askQuickAi('How do I reduce acne marks and hyperpigmentation?')">💧 Acne Marks</button>
+                        <button class="btn btn-sm btn-outline" style="font-size: var(--font-xs); border-radius: var(--radius-full); white-space: nowrap;" onclick="askQuickAi('Suggest a quick DIY face mask recipe using home ingredients!')">🍯 DIY Face Mask</button>
+                    </div>
+
+                    <!-- Main Chat Messages Stream -->
+                    <div id="ai-chat-messages" style="flex: 1; padding: var(--space-md); overflow-y: auto; display: flex; flex-direction: column; gap: 14px; -webkit-overflow-scrolling: touch;" aria-live="polite" role="log" aria-label="AI Chat Conversation">
+                        <!-- Messages & History Injected via JS -->
+                    </div>
+
+                    <!-- Input Controls Bar -->
+                    <div style="padding: var(--space-sm) var(--space-md); border-top: 1px solid var(--glass-border); display: flex; gap: 10px; align-items: flex-end; background: rgba(0,0,0,0.3);">
+                        <textarea id="ai-chat-input" rows="1" placeholder="Ask Glow AI a skincare question... (Press Enter to send, Shift+Enter for newline)" style="flex: 1; resize: none; padding: 12px 16px; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.4); color: white; font-size: var(--font-base); font-family: 'Outfit'; max-height: 120px; line-height: 1.4;" onkeydown="handleAiChatKeydown(event)"></textarea>
+                        <button class="btn" id="ai-send-btn" onclick="sendAiChatMessage()" style="border-radius: var(--radius-md); padding: 12px 20px; height: 46px; font-size: var(--font-base);"><i class="fa-solid fa-paper-plane"></i></button>
                     </div>
                 </div>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <button onclick="clearAiChatHistory()" class="btn btn-sm btn-outline" style="padding: 4px 8px; font-size: 0.75rem; border-radius: 8px; color: var(--text-muted); border-color: rgba(255,255,255,0.15);" title="Clear Conversation"><i class="fa-solid fa-trash-can"></i></button>
-                    <button onclick="closeAiChatModal()" style="background: none; border: none; color: var(--text-muted); font-size: 1.2rem; cursor: pointer; padding: 4px;" aria-label="Close Chat"><i class="fa-solid fa-xmark"></i></button>
-                </div>
-            </div>
-            
-            <!-- Quick Prompt Chips -->
-            <div style="padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none;" role="region" aria-label="Quick Skincare Prompts">
-                <button class="btn btn-sm btn-outline" style="font-size: 0.75rem; border-radius: 20px; white-space: nowrap;" onclick="askQuickAi('Give me 3 daily skincare tips for glowing skin!')">✨ Glowing Tips</button>
-                <button class="btn btn-sm btn-outline" style="font-size: 0.75rem; border-radius: 20px; white-space: nowrap;" onclick="askQuickAi('What is the best routine for oily skin?')">🌿 Oily Skin Routine</button>
-                <button class="btn btn-sm btn-outline" style="font-size: 0.75rem; border-radius: 20px; white-space: nowrap;" onclick="askQuickAi('How do I reduce acne marks and hyperpigmentation?')">💧 Acne Marks</button>
-                <button class="btn btn-sm btn-outline" style="font-size: 0.75rem; border-radius: 20px; white-space: nowrap;" onclick="askQuickAi('Suggest a quick DIY face mask recipe using home ingredients!')">🍯 DIY Face Mask</button>
-            </div>
-
-            <!-- Chat Messages Area -->
-            <div id="ai-chat-messages" style="flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; font-size: 0.9rem; -webkit-overflow-scrolling: touch;" aria-live="polite" role="log" aria-label="AI Chat Conversation">
-                <!-- Messages & History Injected via JS -->
-            </div>
-
-            <!-- Input Controls -->
-            <div style="padding: 12px 14px; border-top: 1px solid var(--glass-border); display: flex; gap: 8px; align-items: flex-end; background: rgba(0,0,0,0.25);">
-                <textarea id="ai-chat-input" rows="1" placeholder="Ask Glow AI a skincare question... (Enter to send, Shift+Enter for newline)" style="flex: 1; resize: none; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--glass-border); background: rgba(0,0,0,0.35); color: white; font-size: 0.85rem; font-family: 'Outfit'; max-height: 100px; line-height: 1.4;" onkeydown="handleAiChatKeydown(event)"></textarea>
-                <button class="btn btn-sm" id="ai-send-btn" onclick="sendAiChatMessage()" style="border-radius: 12px; padding: 10px 16px; height: 42px;"><i class="fa-solid fa-paper-plane"></i></button>
-            </div>
-        </div>
-    </div>
+            </section>
 
     <!-- Notification Container -->
     <div class="toast-container" id="toast-container"></div>
@@ -1269,6 +1276,7 @@
                 activeView.style.animation = 'fadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
 
                 if(target === 'dashboard') renderCalendar();
+                if(target === 'aichat') renderChatHistoryUI();
             });
         });
 
@@ -2225,13 +2233,18 @@ Guidelines:
             };
         }
 
-        function openAiChatModal() {
-            document.getElementById('ai-chat-modal').style.display = 'flex';
+        function openAiChatView() {
+            const navItems = document.querySelectorAll('.nav-item, .mobile-nav-item');
+            navItems.forEach(el => {
+                if (el.getAttribute('data-target') === 'aichat') {
+                    el.click();
+                }
+            });
             renderChatHistoryUI();
-            const savedKey = localStorage.getItem('glowGeminiApiKey') || window.globalGeminiApiKey || '';
-            if (savedKey) {
-                document.getElementById('gemini-key-input').value = savedKey;
-            }
+        }
+
+        function openAiChatModal() {
+            openAiChatView();
         }
 
         function closeAiChatModal() {
