@@ -1071,21 +1071,33 @@
         const todayStr = new Date().toISOString().split('T')[0];
         let currentViewDate = todayStr;
 
+        function trimOldHistory() {
+            if (!state || !state.history) return;
+            const cutoff = new Date();
+            cutoff.setDate(cutoff.getDate() - 60);
+            for (let dateKey in state.history) {
+                const d = new Date(dateKey);
+                if (!isNaN(d.getTime()) && d < cutoff) {
+                    delete state.history[dateKey];
+                }
+            }
+        }
+
         function loadState() {
             const saved = localStorage.getItem('glowAdvancedStateV2');
             if(saved) {
                 state = JSON.parse(saved);
             }
+            trimOldHistory();
             // Ensure today exists in history
             if(!state.history[todayStr]) {
-                // If it's a new day, check if yesterday was done for streak
                 const yesterday = new Date();
                 yesterday.setDate(yesterday.getDate() - 1);
                 const yStr = yesterday.toISOString().split('T')[0];
                 
                 if(state.history[yStr]) {
                     const allDone = [...state.history[yStr].morning, ...state.history[yStr].night].every(t => t.done);
-                    if(!allDone) state.streak = 0; // Reset streak if missed yesterday
+                    if(!allDone) state.streak = 0;
                 } else {
                     state.streak = 0;
                 }
