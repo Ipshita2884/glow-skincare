@@ -17,6 +17,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
     <style>
         :root {
             --bg-color: #0f172a;
@@ -949,40 +951,42 @@
             <span>Settings</span>
         </div>
     <!-- Gemini AI Skincare Assistant Modal -->
-    <div id="ai-chat-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); z-index: 999999; align-items: center; justify-content: center; padding: 15px;">
-        <div class="glass" style="width: 100%; max-width: 480px; max-height: 85vh; display: flex; flex-direction: column; overflow: hidden; border-radius: 20px;">
+    <div id="ai-chat-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); z-index: 999999; align-items: center; justify-content: center; padding: 15px;" role="dialog" aria-modal="true" aria-labelledby="ai-modal-title">
+        <div class="glass" style="width: 100%; max-width: 500px; height: 85vh; max-height: 600px; display: flex; flex-direction: column; overflow: hidden; border-radius: 20px; box-shadow: var(--shadow-luxury);">
             <!-- Modal Header -->
-            <div style="padding: 14px 18px; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.2);">
+            <div style="padding: 14px 18px; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.25);">
                 <div style="display: flex; align-items: center; gap: 10px;">
                     <div style="width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, var(--secondary), var(--primary)); display: flex; align-items: center; justify-content: center; font-size: 1.1rem; color: white;">
                         <i class="fa-solid fa-robot"></i>
                     </div>
                     <div>
-                        <h3 style="font-size: 1.05rem; margin: 0;">Glow AI Assistant</h3>
+                        <h3 id="ai-modal-title" style="font-size: 1.05rem; margin: 0; font-weight: 600;">Glow AI Assistant</h3>
                         <span style="font-size: 0.7rem; color: var(--secondary);"><i class="fa-solid fa-sparkles"></i> Powered by Google Gemini</span>
                     </div>
                 </div>
-                <button onclick="closeAiChatModal()" style="background: none; border: none; color: var(--text-muted); font-size: 1.2rem; cursor: pointer;"><i class="fa-solid fa-xmark"></i></button>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <button onclick="clearAiChatHistory()" class="btn btn-sm btn-outline" style="padding: 4px 8px; font-size: 0.75rem; border-radius: 8px; color: var(--text-muted); border-color: rgba(255,255,255,0.15);" title="Clear Conversation"><i class="fa-solid fa-trash-can"></i></button>
+                    <button onclick="closeAiChatModal()" style="background: none; border: none; color: var(--text-muted); font-size: 1.2rem; cursor: pointer; padding: 4px;" aria-label="Close Chat"><i class="fa-solid fa-xmark"></i></button>
+                </div>
             </div>
             
             <!-- Quick Prompt Chips -->
-            <div style="padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none;">
+            <div style="padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none;" role="region" aria-label="Quick Skincare Prompts">
                 <button class="btn btn-sm btn-outline" style="font-size: 0.75rem; border-radius: 20px; white-space: nowrap;" onclick="askQuickAi('Give me 3 daily skincare tips for glowing skin!')">✨ Glowing Tips</button>
-                <button class="btn btn-sm btn-outline" style="font-size: 0.75rem; border-radius: 20px; white-space: nowrap;" onclick="askQuickAi('How do I reduce acne marks and hyperpigmentation?')">🌿 Acne Marks</button>
+                <button class="btn btn-sm btn-outline" style="font-size: 0.75rem; border-radius: 20px; white-space: nowrap;" onclick="askQuickAi('What is the best routine for oily skin?')">🌿 Oily Skin Routine</button>
+                <button class="btn btn-sm btn-outline" style="font-size: 0.75rem; border-radius: 20px; white-space: nowrap;" onclick="askQuickAi('How do I reduce acne marks and hyperpigmentation?')">💧 Acne Marks</button>
                 <button class="btn btn-sm btn-outline" style="font-size: 0.75rem; border-radius: 20px; white-space: nowrap;" onclick="askQuickAi('Suggest a quick DIY face mask recipe using home ingredients!')">🍯 DIY Face Mask</button>
             </div>
 
             <!-- Chat Messages Area -->
-            <div id="ai-chat-messages" style="flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; font-size: 0.9rem; max-height: 380px;">
-                <div style="background: rgba(244, 114, 182, 0.12); border: 1px solid rgba(244, 114, 182, 0.3); padding: 12px 14px; border-radius: 14px; border-top-left-radius: 2px;">
-                    Hi gorgeous! I'm Glow AI, your personal skincare consultant. Ask me anything about skincare routines, ingredients, acne, or remedies! ✨
-                </div>
+            <div id="ai-chat-messages" style="flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; font-size: 0.9rem; -webkit-overflow-scrolling: touch;" aria-live="polite" role="log" aria-label="AI Chat Conversation">
+                <!-- Messages & History Injected via JS -->
             </div>
 
             <!-- Input Controls -->
-            <div style="padding: 12px 14px; border-top: 1px solid var(--glass-border); display: flex; gap: 8px; background: rgba(0,0,0,0.2);">
-                <input type="text" id="ai-chat-input" placeholder="Ask Glow AI a skincare question..." style="flex: 1; padding: 8px 14px; border-radius: 12px; border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: white; font-size: 0.85rem;" onkeydown="if(event.key === 'Enter') sendAiChatMessage()">
-                <button class="btn btn-sm" onclick="sendAiChatMessage()" style="border-radius: 12px; padding: 0 14px;"><i class="fa-solid fa-paper-plane"></i></button>
+            <div style="padding: 12px 14px; border-top: 1px solid var(--glass-border); display: flex; gap: 8px; align-items: flex-end; background: rgba(0,0,0,0.25);">
+                <textarea id="ai-chat-input" rows="1" placeholder="Ask Glow AI a skincare question... (Enter to send, Shift+Enter for newline)" style="flex: 1; resize: none; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--glass-border); background: rgba(0,0,0,0.35); color: white; font-size: 0.85rem; font-family: 'Outfit'; max-height: 100px; line-height: 1.4;" onkeydown="handleAiChatKeydown(event)"></textarea>
+                <button class="btn btn-sm" id="ai-send-btn" onclick="sendAiChatMessage()" style="border-radius: 12px; padding: 10px 16px; height: 42px;"><i class="fa-solid fa-paper-plane"></i></button>
             </div>
         </div>
     </div>
@@ -1972,7 +1976,22 @@
         renderGallery();
         renderCalendar();
 
-        // Gemini AI Skincare Assistant Integration
+        // Enterprise Production Gemini AI Engine
+        const GEMINI_SYSTEM_PROMPT = `You are Glow AI, a warm, encouraging, expert luxury skincare consultant.
+Guidelines:
+- Answer skincare, beauty, ingredient, and daily routine questions.
+- Never diagnose medical diseases or skin conditions.
+- Never prescribe prescription medicines.
+- Recommend consulting a certified dermatologist when appropriate.
+- Keep responses concise, friendly, and structured using bullet points and emojis.`;
+
+        const GEMINI_MODELS = [
+            'gemini-2.5-flash',
+            'gemini-2.0-flash',
+            'gemini-1.5-flash',
+            'gemini-1.5-pro'
+        ];
+
         function updateGeminiUiLockState(isLocked) {
             const input = document.getElementById('gemini-key-input');
             const saveBtn = document.getElementById('gemini-save-btn');
@@ -2029,8 +2048,186 @@
             }
         }
 
+        function recordAnalytics(eventType, meta) {
+            try {
+                const metrics = JSON.parse(localStorage.getItem('glowAiMetrics') || '{"chats":0,"success":0,"errors":0}');
+                metrics.chats++;
+                if (eventType === 'chat_success') metrics.success++;
+                if (eventType === 'chat_error') metrics.errors++;
+                localStorage.setItem('glowAiMetrics', JSON.stringify(metrics));
+            } catch(e) {}
+        }
+
+        function renderMarkdownMessage(text) {
+            if (typeof marked !== 'undefined' && typeof DOMPurify !== 'undefined') {
+                try {
+                    const rawHtml = marked.parse(text);
+                    return DOMPurify.sanitize(rawHtml);
+                } catch(e) { console.error("Markdown parse error:", e); }
+            }
+            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br>");
+        }
+
+        function getStructuredHistory() {
+            try {
+                return JSON.parse(localStorage.getItem('glowAiChatHistory') || '[]');
+            } catch(e) { return []; }
+        }
+
+        function saveStructuredHistory(history) {
+            try {
+                localStorage.setItem('glowAiChatHistory', JSON.stringify(history.slice(-30)));
+            } catch(e) {}
+        }
+
+        function clearAiChatHistory() {
+            if (confirm("Are you sure you want to clear conversation history?")) {
+                localStorage.removeItem('glowAiChatHistory');
+                renderChatHistoryUI();
+                showToast("Chat history cleared. ✨", "info");
+            }
+        }
+
+        function renderChatHistoryUI() {
+            const container = document.getElementById('ai-chat-messages');
+            if (!container) return;
+
+            const history = getStructuredHistory();
+            if (!history.length) {
+                container.innerHTML = `
+                    <div style="background: rgba(244, 114, 182, 0.12); border: 1px solid rgba(244, 114, 182, 0.3); padding: 14px 16px; border-radius: 14px; border-top-left-radius: 2px;">
+                        Hi gorgeous! I'm Glow AI, your personal luxury skincare consultant. Ask me anything about skin types, morning/night routines, ingredients, acne, or home remedies! ✨
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+            history.forEach(item => {
+                const isUser = item.role === 'user';
+                const formattedTime = item.timestamp ? new Date(item.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '';
+                
+                if (isUser) {
+                    html += `
+                        <div style="align-self: flex-end; background: var(--primary); color: white; padding: 10px 14px; border-radius: 14px; border-top-right-radius: 2px; max-width: 85%; font-size: 0.9rem;">
+                            ${item.message.replace(/</g, "&lt;").replace(/>/g, "&gt;")}
+                            <div style="font-size:0.65rem; opacity:0.8; text-align:right; margin-top:3px;">${formattedTime}</div>
+                        </div>
+                    `;
+                } else {
+                    const parsedContent = renderMarkdownMessage(item.message);
+                    html += `
+                        <div style="align-self: flex-start; background: rgba(244, 114, 182, 0.1); border: 1px solid rgba(244, 114, 182, 0.25); padding: 12px 14px; border-radius: 14px; border-top-left-radius: 2px; max-width: 88%; font-size: 0.88rem; line-height: 1.5;">
+                            <div class="ai-msg-body">${parsedContent}</div>
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px; pt-4; border-top:1px solid rgba(255,255,255,0.05); font-size:0.7rem; color:var(--text-muted);">
+                                <span>${item.model ? '<i class="fa-solid fa-bolt"></i> ' + item.model : ''}</span>
+                                <button class="btn btn-sm btn-outline" style="padding: 2px 6px; font-size:0.7rem; border-radius:6px;" onclick="copyMessageText(this, \`${item.message.replace(/`/g, '\\`').replace(/\\/g, '\\\\')}\`)"><i class="fa-regular fa-copy"></i> Copy</button>
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+
+            container.innerHTML = html;
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function getGeminiContentsPayload(newPrompt) {
+            const history = getStructuredHistory().slice(-12);
+            const contents = [
+                { role: 'user', parts: [{ text: `[System Instruction: ${GEMINI_SYSTEM_PROMPT}]` }] },
+                { role: 'model', parts: [{ text: "Understood! I am Glow AI, your expert luxury skincare consultant. How can I help you today? ✨" }] }
+            ];
+
+            history.forEach(item => {
+                contents.push({
+                    role: item.role === 'user' ? 'user' : 'model',
+                    parts: [{ text: item.message }]
+                });
+            });
+
+            contents.push({
+                role: 'user',
+                parts: [{ text: newPrompt }]
+            });
+
+            return contents;
+        }
+
+        async function fetchGeminiResponse(promptText) {
+            // 1. Attempt Serverless Proxy Route (/api/chat) first
+            try {
+                const proxyRes = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: getGeminiContentsPayload(promptText),
+                        prompt: promptText
+                    })
+                });
+
+                if (proxyRes.ok) {
+                    const proxyData = await proxyRes.json();
+                    if (proxyData.reply) {
+                        recordAnalytics('chat_success', proxyData.model);
+                        return { reply: proxyData.reply, model: proxyData.model || 'serverless-proxy' };
+                    }
+                }
+            } catch(e) {
+                // Fallback to client REST cascade for static hosting (GitHub Pages)
+            }
+
+            // 2. Direct Gemini REST API Cascade
+            const savedKey = localStorage.getItem('glowGeminiApiKey') || window.globalGeminiApiKey || '';
+            if (!savedKey.trim()) {
+                return {
+                    error: true,
+                    reply: "Glow AI is ready! Please enter your Gemini API Key once in Settings (⚙️) to activate AI globally for all connected users! 🔑\n\n(Get a free key at aistudio.google.com)"
+                };
+            }
+
+            const payload = { contents: getGeminiContentsPayload(promptText) };
+            let lastError = null;
+
+            for (const modelName of GEMINI_MODELS) {
+                try {
+                    const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${savedKey.trim()}`;
+                    const res = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    const data = await res.json();
+                    if (res.ok && data.candidates?.[0]?.content?.parts?.[0]?.text) {
+                        recordAnalytics('chat_success', modelName);
+                        return { reply: data.candidates[0].content.parts[0].text, model: modelName };
+                    }
+
+                    if (res.status === 401 || res.status === 403) {
+                        recordAnalytics('chat_error');
+                        return {
+                            error: true,
+                            reply: `Invalid API Key (${res.status}): Please verify your Gemini API key in Settings (⚙️).`
+                        };
+                    }
+
+                    lastError = data.error?.message || `HTTP ${res.status}`;
+                } catch(e) {
+                    lastError = e.message;
+                }
+            }
+
+            recordAnalytics('chat_error');
+            return {
+                error: true,
+                reply: `All Gemini AI models are currently busy (${lastError}). Tap Retry below!`
+            };
+        }
+
         function openAiChatModal() {
             document.getElementById('ai-chat-modal').style.display = 'flex';
+            renderChatHistoryUI();
             const savedKey = localStorage.getItem('glowGeminiApiKey') || window.globalGeminiApiKey || '';
             if (savedKey) {
                 document.getElementById('gemini-key-input').value = savedKey;
@@ -2041,76 +2238,98 @@
             document.getElementById('ai-chat-modal').style.display = 'none';
         }
 
-        async function fetchGeminiResponse(promptText) {
-            const savedKey = localStorage.getItem('glowGeminiApiKey') || window.globalGeminiApiKey || '';
-            if (!savedKey.trim()) {
-                return "Glow AI is ready! Please enter your Gemini API Key once in Settings (⚙️) to activate AI globally for all connected users! 🔑\n\n(Get a free key at aistudio.google.com)";
+        function copyMessageText(btn, text) {
+            navigator.clipboard.writeText(text).then(() => {
+                const orig = btn.innerHTML;
+                btn.innerHTML = '<i class="fa-solid fa-check"></i> Copied!';
+                setTimeout(() => { btn.innerHTML = orig; }, 2000);
+            }).catch(e => console.error("Copy error:", e));
+        }
+
+        function retryLastUserMessage() {
+            const history = getStructuredHistory();
+            const lastUserItem = [...history].reverse().find(item => item.role === 'user');
+            if (lastUserItem) {
+                document.getElementById('ai-chat-input').value = lastUserItem.message;
+                sendAiChatMessage();
             }
+        }
 
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${savedKey.trim()}`;
-            const systemPrompt = "You are Glow AI, a warm, encouraging, expert luxury skincare consultant. Keep responses concise, helpful, friendly, and formatted nicely with bullet points and emojis. Focus on safe, effective skincare advice, daily routines, and home remedies.";
-
-            try {
-                const res = await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: [{
-                            parts: [
-                                { text: systemPrompt },
-                                { text: promptText }
-                            ]
-                        }]
-                    })
-                });
-
-                const data = await res.json();
-                if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts[0]) {
-                    return data.candidates[0].content.parts[0].text;
-                } else if (data.error && data.error.message) {
-                    return `Gemini AI Notice: ${data.error.message}`;
-                } else {
-                    return "Sorry, I couldn't process that skincare request right now. Try again! ✨";
-                }
-            } catch(e) {
-                return "Network connection issue. Please check your internet connection.";
+        function handleAiChatKeydown(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendAiChatMessage();
             }
         }
 
         async function sendAiChatMessage() {
             const input = document.getElementById('ai-chat-input');
+            const sendBtn = document.getElementById('ai-send-btn');
             const msg = input.value.trim();
             if (!msg) return;
 
-            const container = document.getElementById('ai-chat-messages');
-            
-            // User message bubble
-            const userMsgDiv = document.createElement('div');
-            userMsgDiv.style.cssText = "align-self: flex-end; background: var(--primary); color: white; padding: 10px 14px; border-radius: 14px; border-top-right-radius: 2px; max-width: 80%;";
-            userMsgDiv.innerText = msg;
-            container.appendChild(userMsgDiv);
+            if (sendBtn) sendBtn.disabled = true;
+
+            const history = getStructuredHistory();
+            const timestamp = new Date().toISOString();
+            const userItem = { id: 'usr_' + Date.now(), role: 'user', message: msg, timestamp };
+            history.push(userItem);
+            saveStructuredHistory(history);
 
             input.value = '';
-            container.scrollTop = container.scrollHeight;
+            renderChatHistoryUI();
 
-            // Loading indicator
+            const container = document.getElementById('ai-chat-messages');
+            
+            // Add typing indicator
             const loadingDiv = document.createElement('div');
-            loadingDiv.style.cssText = "align-self: flex-start; background: rgba(255,255,255,0.08); padding: 10px 14px; border-radius: 14px; border-top-left-radius: 2px; max-width: 80%;";
-            loadingDiv.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="color:var(--secondary);"></i> Glow AI is thinking...';
+            loadingDiv.style.cssText = "align-self: flex-start; background: rgba(255,255,255,0.08); padding: 10px 14px; border-radius: 14px; border-top-left-radius: 2px; max-width: 80%; font-size: 0.85rem;";
+            loadingDiv.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="color:var(--secondary);"></i> Glow AI is analyzing...';
             container.appendChild(loadingDiv);
             container.scrollTop = container.scrollHeight;
 
-            const reply = await fetchGeminiResponse(msg);
-            
-            loadingDiv.style.cssText = "align-self: flex-start; background: rgba(244, 114, 182, 0.12); border: 1px solid rgba(244, 114, 182, 0.3); padding: 12px 14px; border-radius: 14px; border-top-left-radius: 2px; max-width: 85%; white-space: pre-wrap;";
-            loadingDiv.innerText = reply;
-            container.scrollTop = container.scrollHeight;
+            const res = await fetchGeminiResponse(msg);
+
+            if (sendBtn) sendBtn.disabled = false;
+
+            if (res.error) {
+                container.removeChild(loadingDiv);
+                const errorDiv = document.createElement('div');
+                errorDiv.style.cssText = "align-self: flex-start; background: rgba(248, 113, 113, 0.15); border: 1px solid var(--danger); color: white; padding: 12px 14px; border-radius: 14px; border-top-left-radius: 2px; max-width: 88%; font-size: 0.85rem;";
+                errorDiv.innerHTML = `
+                    <div>${res.reply}</div>
+                    <button class="btn btn-sm btn-outline" style="margin-top:8px; border-color:var(--danger); color:white;" onclick="retryLastUserMessage()"><i class="fa-solid fa-rotate-right"></i> Retry Message</button>
+                `;
+                container.appendChild(errorDiv);
+                container.scrollTop = container.scrollHeight;
+            } else {
+                const modelItem = {
+                    id: 'ai_' + Date.now(),
+                    role: 'model',
+                    message: res.reply,
+                    timestamp: new Date().toISOString(),
+                    model: res.model
+                };
+                history.push(modelItem);
+                saveStructuredHistory(history);
+                renderChatHistoryUI();
+            }
         }
 
         function askQuickAi(text) {
             document.getElementById('ai-chat-input').value = text;
             sendAiChatMessage();
         }
+
+        // Accessibility Shortcuts (Escape to close chat)
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const modal = document.getElementById('ai-chat-modal');
+                if (modal && modal.style.display !== 'none') {
+                    closeAiChatModal();
+                }
+            }
+        });
 
         // Random flirty toast on load
         setTimeout(() => {
