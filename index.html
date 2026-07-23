@@ -913,10 +913,14 @@
 
                     <!-- Gemini AI Key Setting Card -->
                     <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 12px; border: 1px solid var(--glass-border); margin-top: 15px;">
-                        <strong><i class="fa-solid fa-brain" style="color:var(--primary);"></i> Google Gemini AI Key:</strong>
-                        <div style="margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
+                            <strong><i class="fa-solid fa-brain" style="color:var(--primary);"></i> Google Gemini AI Key:</strong>
+                            <span id="gemini-key-status" style="display:none; color: var(--success); font-size: 0.8rem;"><i class="fa-solid fa-shield-check"></i> Active & Protected</span>
+                        </div>
+                        <div style="margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap;" id="gemini-key-controls">
                             <input type="password" id="gemini-key-input" placeholder="Paste your Gemini API Key here..." style="flex: 1; min-width: 200px; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: white; font-size: 0.85rem;">
-                            <button class="btn btn-sm" onclick="saveGeminiKey()"><i class="fa-solid fa-save"></i> Save Key</button>
+                            <button class="btn btn-sm" id="gemini-save-btn" onclick="saveGeminiKey()"><i class="fa-solid fa-save"></i> Save Key</button>
+                            <button class="btn btn-sm btn-outline" id="gemini-unlock-btn" onclick="unlockGeminiKey()" style="display:none;"><i class="fa-solid fa-lock-open"></i> Unlock to Edit</button>
                         </div>
                         <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 6px;">Get a free API key at <a href="https://aistudio.google.com/" target="_blank" style="color: var(--secondary); text-decoration: underline;">Google AI Studio</a>.</div>
                     </div>
@@ -1191,6 +1195,9 @@
                 db.collection('config').doc('gemini').onSnapshot(doc => {
                     if (doc.exists && doc.data().apiKey) {
                         window.globalGeminiApiKey = doc.data().apiKey;
+                        if (typeof updateGeminiUiLockState === 'function') {
+                            updateGeminiUiLockState(true);
+                        }
                     }
                 }, err => console.log("Global config notice:", err));
                 
@@ -1966,23 +1973,59 @@
         renderCalendar();
 
         // Gemini AI Skincare Assistant Integration
+        function updateGeminiUiLockState(isLocked) {
+            const input = document.getElementById('gemini-key-input');
+            const saveBtn = document.getElementById('gemini-save-btn');
+            const unlockBtn = document.getElementById('gemini-unlock-btn');
+            const statusSpan = document.getElementById('gemini-key-status');
+            
+            if (!input) return;
+
+            if (isLocked) {
+                input.disabled = true;
+                input.style.opacity = '0.7';
+                if (saveBtn) saveBtn.style.display = 'none';
+                if (unlockBtn) unlockBtn.style.display = 'inline-flex';
+                if (statusSpan) statusSpan.style.display = 'inline-block';
+            } else {
+                input.disabled = false;
+                input.style.opacity = '1';
+                if (saveBtn) saveBtn.style.display = 'inline-flex';
+                if (unlockBtn) unlockBtn.style.display = 'none';
+                if (statusSpan) statusSpan.style.display = 'none';
+            }
+        }
+
+        function unlockGeminiKey() {
+            if (confirm("Do you want to unlock the Gemini API Key input to make changes?")) {
+                updateGeminiUiLockState(false);
+                showToast("Key input unlocked. Enter new key and click Save.", "info");
+            }
+        }
+
         function saveGeminiKey() {
             const val = document.getElementById('gemini-key-input').value.trim();
-            if (val) {
-                localStorage.setItem('glowGeminiApiKey', val);
-                window.globalGeminiApiKey = val;
-                if (db) {
-                    db.collection('config').doc('gemini').set({ apiKey: val }, { merge: true })
-                      .then(() => showToast("Global Gemini AI Key saved for ALL users! 🤖✨", "success"))
-                      .catch(e => {
-                          console.error("Firestore config save error:", e);
-                          showToast("Gemini AI API Key saved locally! 🤖✨", "success");
-                      });
-                } else {
-                    showToast("Gemini AI API Key saved locally! 🤖✨", "success");
-                }
-            } else {
+            if (!val) {
                 showToast("Please enter a valid API Key.", "info");
+                return;
+            }
+
+            const confirmed = confirm("Are you sure you want to save & lock this Gemini AI Key for ALL connected users globally?");
+            if (!confirmed) return;
+
+            localStorage.setItem('glowGeminiApiKey', val);
+            window.globalGeminiApiKey = val;
+            updateGeminiUiLockState(true);
+
+            if (db) {
+                db.collection('config').doc('gemini').set({ apiKey: val, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true })
+                  .then(() => showToast("Global Gemini AI Key Active, Locked & Shared for ALL users! 🤖✨", "success"))
+                  .catch(e => {
+                      console.error("Firestore config save error:", e);
+                      showToast("Gemini AI Key saved & locked locally! 🤖✨", "success");
+                  });
+            } else {
+                showToast("Gemini AI Key saved & locked locally! 🤖✨", "success");
             }
         }
 
