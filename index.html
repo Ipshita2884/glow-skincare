@@ -646,6 +646,26 @@
             border-top-right-radius: var(--radius-lg);
         }
 
+        /* Mobile Keyboard & Chat Responsiveness Fix */
+        @media (max-width: 768px) {
+            #aichat {
+                padding: 0 !important;
+            }
+            #aichat > .glass {
+                height: calc(100dvh - 130px) !important;
+                max-height: 100dvh !important;
+                border-radius: 12px !important;
+            }
+            #ai-chat-page-input, #ai-chat-input {
+                font-size: 16px !important; /* Prevents mobile browser auto-zoom bug */
+                -webkit-appearance: none;
+                touch-action: manipulation;
+            }
+            .ai-chat-page-input-container {
+                padding-bottom: 75px !important; /* Prevents mobile nav overlap */
+            }
+        }
+
         .mobile-nav-item {
             display: flex;
             flex-direction: column;
@@ -1149,9 +1169,9 @@
                     </div>
 
                     <!-- Input Controls -->
-                    <div style="padding: 14px 18px; border-top: 1px solid var(--glass-border); display: flex; gap: 10px; align-items: flex-end; background: rgba(0,0,0,0.3);">
-                        <textarea id="ai-chat-page-input" rows="1" placeholder="Ask Glow AI a skincare question... (Enter to send, Shift+Enter for newline)" style="flex: 1; resize: none; padding: 12px 16px; border-radius: 12px; border: 1px solid var(--glass-border); background: rgba(0,0,0,0.4); color: white; font-size: 0.9rem; font-family: 'Outfit'; max-height: 120px; line-height: 1.4;" onkeydown="handleAiChatPageKeydown(event)"></textarea>
-                        <button class="btn" id="ai-page-send-btn" onclick="sendAiChatPageMessage()" style="border-radius: 12px; padding: 12px 20px; height: 46px; font-size: 0.9rem;"><i class="fa-solid fa-paper-plane"></i></button>
+                    <div class="ai-chat-page-input-container" style="padding: 14px 18px; border-top: 1px solid var(--glass-border); display: flex; gap: 10px; align-items: flex-end; background: rgba(0,0,0,0.3);">
+                        <textarea id="ai-chat-page-input" rows="1" placeholder="Ask Glow AI a skincare question... (Enter to send)" style="flex: 1; resize: none; padding: 12px 16px; border-radius: 12px; border: 1px solid var(--glass-border); background: rgba(0,0,0,0.4); color: white; font-size: 16px; font-family: 'Outfit'; max-height: 120px; line-height: 1.4; -webkit-appearance: none; touch-action: manipulation;" onkeydown="handleAiChatPageKeydown(event)"></textarea>
+                        <button class="btn" id="ai-page-send-btn" onclick="sendAiChatPageMessage()" style="border-radius: 12px; padding: 12px 20px; height: 46px; font-size: 1rem;"><i class="fa-solid fa-paper-plane"></i></button>
                     </div>
                 </div>
             </section>
@@ -1179,12 +1199,21 @@
                             Glow AI is pre-configured with Google Gemini + Pollinations Free Open AI + Local Ollama fallback cascade. ✨
                         </div>
 
+                        <!-- Google Gemini API Key Input -->
+                        <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.08);">
+                            <div style="font-weight: 600; font-size: 0.85rem; color: var(--primary); margin-bottom: 6px;"><i class="fa-solid fa-key"></i> Google Gemini API Key (Optional)</div>
+                            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                <input type="password" id="gemini-key-input" placeholder="AIzaSy..." style="flex: 1; min-width: 200px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: white; font-size: 0.8rem;">
+                                <button class="btn btn-sm" onclick="saveGeminiApiKey()"><i class="fa-solid fa-save"></i> Save Gemini Key</button>
+                            </div>
+                        </div>
+
                         <!-- Ollama Local AI Configuration -->
                         <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.08);">
                             <div style="font-weight: 600; font-size: 0.85rem; color: var(--secondary); margin-bottom: 6px;"><i class="fa-solid fa-server"></i> Local / Custom Ollama Integration (Optional)</div>
                             <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                                 <input type="text" id="ollama-url-input" placeholder="http://localhost:11434" style="flex: 2; min-width: 180px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: white; font-size: 0.8rem;">
-                                <input type="text" id="ollama-model-input" placeholder="Model (e.g. llama3)" style="flex: 1; min-width: 120px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: white; font-size: 0.8rem;">
+                                <input type="text" id="ollama-model-input" placeholder="Model (e.g. phi3)" style="flex: 1; min-width: 120px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: white; font-size: 0.8rem;">
                                 <button class="btn btn-sm" onclick="saveOllamaConfig()"><i class="fa-solid fa-save"></i> Save Ollama</button>
                             </div>
                         </div>
@@ -2453,7 +2482,24 @@ Guidelines:
 
         let cachedClientActiveModel = null;
 
+        function saveGeminiApiKey() {
+            const key = document.getElementById('gemini-key-input').value.trim();
+            if (key) {
+                localStorage.setItem('glowGeminiApiKey', key);
+                showToast("Google Gemini API Key Saved & Active! 🚀✨", "success");
+            } else {
+                localStorage.removeItem('glowGeminiApiKey');
+                showToast("Using default zero-config AI Engine ✨", "info");
+            }
+        }
+
+        function loadGeminiApiKeyUI() {
+            const input = document.getElementById('gemini-key-input');
+            if (input) input.value = localStorage.getItem('glowGeminiApiKey') || '';
+        }
+
         function loadOllamaSettingsUI() {
+            loadGeminiApiKeyUI();
             const urlInput = document.getElementById('ollama-url-input');
             const modelInput = document.getElementById('ollama-model-input');
             if (urlInput) urlInput.value = localStorage.getItem('glowOllamaUrl') || 'http://localhost:11434';
@@ -2499,6 +2545,20 @@ Guidelines:
         }
 
         async function fetchPollinationsAiResponse(promptText) {
+            // Method 1: GET request (HTTPS, works 100% cross-origin on mobile)
+            try {
+                const fullPrompt = `${GEMINI_SYSTEM_PROMPT}\n\nUser Skincare Question: ${promptText}`;
+                const url = `https://text.pollinations.ai/${encodeURIComponent(fullPrompt)}?model=openai`;
+                const res = await fetch(url);
+                if (res.ok) {
+                    const text = await res.text();
+                    if (text && text.trim().length > 2) {
+                        return { reply: text.trim(), model: 'glow-ai-cloud' };
+                    }
+                }
+            } catch(e) {}
+
+            // Method 2: POST JSON payload
             try {
                 const res = await fetch('https://text.pollinations.ai/', {
                     method: 'POST',
@@ -2514,62 +2574,25 @@ Guidelines:
                 if (res.ok) {
                     const text = await res.text();
                     if (text && text.trim().length > 2) {
-                        return { reply: text.trim(), model: 'pollinations-free-ai' };
+                        return { reply: text.trim(), model: 'glow-ai-cloud' };
                     }
                 }
-            } catch(e) {
-                console.error("Pollinations error:", e);
-            }
+            } catch(e) {}
             return null;
         }
 
         async function fetchGeminiResponse(promptText) {
-            // 1. Attempt Serverless Proxy Route (/api/chat)
-            try {
-                const proxyRes = await fetch('/api/chat', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: getGeminiContentsPayload(promptText),
-                        prompt: promptText
-                    })
-                });
-
-                if (proxyRes.ok) {
-                    const proxyData = await proxyRes.json();
-                    if (proxyData.reply) {
-                        recordAnalytics('chat_success', proxyData.model);
-                        return { reply: proxyData.reply, model: proxyData.model || 'serverless-proxy' };
-                    }
-                }
-            } catch(e) {}
-
-            // 2. Pollinations Free Open AI (Instant response, 0 API keys required, 100% 24/7 uptime)
-            const pollinationsRes = await fetchPollinationsAiResponse(promptText);
-            if (pollinationsRes) {
-                recordAnalytics('chat_success', pollinationsRes.model);
-                return pollinationsRes;
-            }
-
-            // 3. Local / Remote Ollama AI Integration
-            const ollamaRes = await fetchOllamaResponse(promptText);
-            if (ollamaRes) {
-                recordAnalytics('chat_success', ollamaRes.model);
-                return ollamaRes;
-            }
-
-            // 4. Direct Gemini REST API Cascade (if key saved)
+            // 1. Direct Gemini API (if user provided key in Settings)
             const savedKey = localStorage.getItem('glowGeminiApiKey') || window.globalGeminiApiKey || '';
             const activeKey = savedKey.trim();
 
             if (activeKey) {
                 const payload = { contents: getGeminiContentsPayload(promptText) };
                 const validGeminiModels = [
-                    'gemini-2.0-flash-exp',
-                    'gemini-1.5-flash-latest',
-                    'gemini-1.5-pro-latest',
                     'gemini-1.5-flash',
-                    'gemini-1.5-pro'
+                    'gemini-2.0-flash-exp',
+                    'gemini-1.5-pro',
+                    'gemini-1.5-flash-8b'
                 ];
 
                 for (const modelName of validGeminiModels) {
@@ -2585,10 +2608,24 @@ Guidelines:
                         if (res.ok && data.candidates?.[0]?.content?.parts?.[0]?.text) {
                             cachedClientActiveModel = modelName;
                             recordAnalytics('chat_success', modelName);
-                            return { reply: data.candidates[0].content.parts[0].text, model: modelName };
+                            return { reply: data.candidates[0].content.parts[0].text, model: `gemini-${modelName}` };
                         }
                     } catch(e) {}
                 }
+            }
+
+            // 2. Try Local / Remote Ollama AI Server (phi3 / llama3)
+            const ollamaRes = await fetchOllamaResponse(promptText);
+            if (ollamaRes) {
+                recordAnalytics('chat_success', ollamaRes.model);
+                return ollamaRes;
+            }
+
+            // 3. High-Speed Cloud AI Engine (Works on Mobile + Web globally for ALL users 24/7 with 0 key setup)
+            const pollinationsRes = await fetchPollinationsAiResponse(promptText);
+            if (pollinationsRes) {
+                recordAnalytics('chat_success', pollinationsRes.model);
+                return pollinationsRes;
             }
 
             recordAnalytics('chat_error');
@@ -2717,7 +2754,18 @@ Guidelines:
             sendAiChatMessage(inp2 ? 'ai-chat-page-input' : 'ai-chat-input', 'ai-page-send-btn');
         }
 
-        // Accessibility Shortcuts (Escape to close chat)
+        // Mobile Keyboard Focus Scroll Handler
+        window.addEventListener('load', () => {
+            const inp = document.getElementById('ai-chat-page-input');
+            if (inp) {
+                inp.addEventListener('focus', () => {
+                    setTimeout(() => {
+                        const msgBox = document.getElementById('ai-chat-page-messages');
+                        if (msgBox) msgBox.scrollTop = msgBox.scrollHeight;
+                    }, 300);
+                });
+            }
+        });
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 const modal = document.getElementById('ai-chat-modal');
