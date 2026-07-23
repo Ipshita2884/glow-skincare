@@ -1809,24 +1809,49 @@
                 return;
             }
             
+            showToast("Connecting to Google...", "info");
+
             if (auth) {
                 const provider = new firebase.auth.GoogleAuthProvider();
                 provider.addScope('https://www.googleapis.com/auth/calendar.events');
                 auth.signInWithPopup(provider).then(result => {
                     const user = result.user;
                     currentUserEmail = user.email;
+                    showToast(`Connected as ${user.email}! ✨`, 'success');
+                    const btn = document.getElementById('sync-cal-btn');
+                    if (btn) btn.innerHTML = `<i class="fa-solid fa-cloud-check"></i> ${user.email.split('@')[0]}`;
+                    
+                    db.collection('users').doc(currentUserEmail).get().then(doc => {
+                        if (doc.exists && doc.data().state) {
+                            state = doc.data().state;
+                            localStorage.setItem('glowAdvancedStateV2', JSON.stringify(state));
+                            renderRoutines();
+                            renderCalendar();
+                            renderGallery();
+                        } else {
+                            saveState();
+                        }
+                    });
+
                     if (result.credential && result.credential.accessToken) {
                         googleAccessToken = result.credential.accessToken;
                         if (typeof syncToGoogleCalendar === 'function') syncToGoogleCalendar();
+                    } else if (tokenClient) {
+                        tokenClient.requestAccessToken();
                     }
                 }).catch(err => {
-                    console.log("Firebase auth fallback to tokenClient:", err);
+                    console.log("Firebase auth error/fallback:", err);
+                    if (err && err.code === 'auth/popup-blocked') {
+                        showToast("Popup was blocked by your browser! Please allow popups for this site.", "error");
+                    } else if (err && err.code === 'auth/unauthorized-domain') {
+                        showToast("Domain not authorized! Add ipshita2884.github.io to Firebase -> Auth -> Settings -> Authorized domains.", "error");
+                    }
                     if(tokenClient) tokenClient.requestAccessToken();
                 });
             } else if(tokenClient) {
                 tokenClient.requestAccessToken();
             } else {
-                showToast("Google client failed to load. Check your internet or adblocker.", "error");
+                showToast("Google client failed to load. Check your internet connection.", "error");
             }
             requestNotificationPermission();
         }
