@@ -1511,8 +1511,11 @@
             } catch(e) { console.error(e); }
 
             if (db && currentUserEmail) {
-                    state: state
-                }, { merge: true }).catch(err => console.error("Cloud sync error:", err));
+                try {
+                    db.collection('users').doc(currentUserEmail).set({
+                        state: state
+                    }, { merge: true }).catch(err => console.error("Cloud sync error:", err));
+                } catch(e) {}
             }
         }
 
